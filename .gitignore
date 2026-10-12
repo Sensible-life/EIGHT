@@ -1,0 +1,25 @@
+node_modules/
+.expo/
+/app/ios/
+/app/android/
+server/.venv/
+server/data/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Local songs, separation results and workspace archives
+/*.mp3
+/separated/
+*.tgz
+*.tar.gz
+
+# Machine-specific agent settings and signing credentials
+.claude/
+.codex/
+*.keystore
+*.jks
+credentials.json

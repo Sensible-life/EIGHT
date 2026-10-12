@@ -1,0 +1,76 @@
+{
+  "expo": {
+    "name": "ChoreoLayer",
+    "slug": "choreo-layer",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.systemdesign.choreolayer",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "같은 Wi-Fi의 음원 분석 서버에 접속합니다.",
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.systemdesign.choreolayer",
+      "adaptiveIcon": {
+        "backgroundColor": "#111114",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "react-native-audio-api",
+        {
+          "iosBackgroundMode": true,
+          "androidForegroundService": false,
+          "androidPermissions": [],
+          "androidFSTypes": [],
+          "androidFSStopWithTask": true,
+          "disableFFmpeg": false,
+          "disableStaticExternalLibs": false
+        }
+      ],
+      "expo-router",
+      "expo-asset",
+      "expo-video",
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "연습 영상을 가져오기 위해 사진 보관함을 사용합니다.",
+          "cameraPermission": "연습 동작을 촬영하기 위해 카메라를 사용합니다.",
+          "microphonePermission": "연습 영상의 소리를 녹음하기 위해 마이크를 사용합니다."
+        }
+      ]
+    ],
+    "extra": {
+      "defaultServerUrl": "http://192.168.0.10:8000"
+    },
+    "scheme": "choreolayer",
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

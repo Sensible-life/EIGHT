@@ -1,0 +1,11 @@
+torch>=2.3
+torchaudio>=2.3
+demucs==4.1.0
+beat_this @ git+https://github.com/CPJKU/beat_this.git
+librosa>=0.10
+soundfile
+numpy
+# ONNX 경로 (앱 내장 준비)
+onnx
+onnxscript
+onnxruntime

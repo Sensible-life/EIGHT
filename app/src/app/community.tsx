@@ -1,0 +1,14 @@
+import { useState } from 'react';
+import { Text, TextInput, View } from 'react-native';
+import { useLibrary } from '../state/LibraryProvider';
+import { samplePosts } from '../state/extras';
+import { Button, Card, Heading, Page, ui } from '../ui/Kit';
+import { confirmAction } from '../ui/confirm';
+export default function Community() {
+  const { data, updateExtras } = useLibrary(); const [draft, setDraft] = useState(''), [comments, setComments] = useState<Record<string, string>>({});
+  const posts = data.extras?.posts ?? [];
+  return <Page><Heading title="함께 느끼는 리듬" caption="LOCAL COMMUNITY PREVIEW" /><Text style={ui.body}>이 기기에서만 동작하는 커뮤니티 체험입니다. 글·댓글·좋아요가 다른 사람에게 전송되지 않아요.</Text><Card><TextInput accessibilityLabel="피드 글 작성" value={draft} onChangeText={setDraft} maxLength={1000} multiline style={[ui.input, { minHeight: 90 }]} placeholder="오늘 발견한 리듬을 남겨보세요" /><Button title="내 기기에 글 저장" disabled={!draft.trim()} onPress={() => { const text = draft.trim(); updateExtras(e => ({ ...e, posts: [{ id: `post-${Date.now()}`, author: '나', text, sample: false, likes: 0, liked: false, comments: [] }, ...e.posts] })); setDraft(''); }} /><Button title="샘플 피드 불러오기" secondary onPress={() => updateExtras(e => ({ ...e, posts: [...e.posts, ...samplePosts().filter(p => !e.posts.some(x => x.id === p.id))] }))} /></Card>
+    {posts.filter(p => !p.hidden).map(p => <Card key={p.id}><View style={ui.between}><Text style={ui.h3}>{p.author}</Text><Text style={ui.pill}>{p.sample ? '샘플' : '로컬 기록'}</Text></View><Text style={ui.body}>{p.text}</Text><Button title={`${p.liked ? '좋아요 취소' : '좋아요'} · ${p.likes}`} secondary onPress={() => updateExtras(e => ({ ...e, posts: e.posts.map(x => x.id === p.id ? { ...x, liked: !x.liked, likes: Math.max(0, x.likes + (x.liked ? -1 : 1)) } : x) }))} />{p.comments.map((c, i) => <Text key={i} style={ui.small}>↳ {c}</Text>)}<TextInput accessibilityLabel={`${p.author} 글에 댓글`} style={ui.input} value={comments[p.id] ?? ''} onChangeText={value => setComments(c => ({ ...c, [p.id]: value }))} placeholder="댓글 남기기 · 기기에만 저장" maxLength={300} /><Button title="댓글 저장" secondary disabled={!comments[p.id]?.trim()} onPress={() => { const comment = comments[p.id].trim(); updateExtras(e => ({ ...e, posts: e.posts.map(x => x.id === p.id ? { ...x, comments: [...x.comments, comment] } : x) })); setComments(c => ({ ...c, [p.id]: '' })); }} /><Button title="이 글 숨기기" secondary onPress={() => updateExtras(e => ({ ...e, posts: e.posts.map(x => x.id === p.id ? { ...x, hidden: true } : x) }))} />{!p.sample && <Button title="내 글 삭제" secondary onPress={() => confirmAction('내 글 삭제', '이 기기에 저장한 글과 댓글을 삭제합니다.', () => updateExtras(e => ({ ...e, posts: e.posts.filter(x => x.id !== p.id) })))} />}</Card>)}
+    {!!posts.filter(p => p.hidden).length && <Button title="숨긴 글 다시 표시" secondary onPress={() => updateExtras(e => ({ ...e, posts: e.posts.map(p => ({ ...p, hidden: false })) }))} />}
+  </Page>;
+}
