@@ -58,6 +58,7 @@ class PoseEngine(
     private val options: PoseOptions,
     private val onResult: (PoseResult) -> Unit,
     private val onDelegateChanged: (String) -> Unit,
+    private val onError: (String) -> Unit,
 ) {
     @Volatile var delegate = "gpu"
         private set
@@ -196,16 +197,24 @@ class PoseEngine(
         }
         gpu?.close() // outside the lock, as in close()
         val cpu = build(Delegate.CPU)
-        synchronized(this) {
+        val ok = synchronized(this) {
             if (closed) {
                 cpu?.close()
                 return
             }
-            landmarker = cpu
-            delegate = "cpu"
-            busySince = 0L
+            if (cpu != null) {
+                landmarker = cpu
+                delegate = "cpu"
+                busySince = 0L
+            }
+            cpu != null
         }
-        onDelegateChanged("cpu")
+        if (ok) {
+            onDelegateChanged("cpu")
+        } else {
+            Log.e(TAG, "PoseLandmarker CPU fallback failed; engine is dead")
+            onError("자세 인식을 시작하지 못했어요.")
+        }
     }
 
     companion object {

@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.view.ViewGroup
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.LifecycleOwner
@@ -27,6 +28,7 @@ class PoseCameraView(context: Context, appContext: AppContext) : ExpoView(contex
         scaleType = PreviewView.ScaleType.FILL_CENTER
     }
     private var wantActive = false
+    private var attached = false
     private var source: FrameSource? = null
     private var engine: PoseEngine? = null
     var model = "lite"
@@ -40,12 +42,33 @@ class PoseCameraView(context: Context, appContext: AppContext) : ExpoView(contex
         wantActive = active
     }
 
-    /** After every prop update: start or stop to match `active`. */
-    fun applyProps() {
-        if (wantActive) start() else stop()
+    /** After every prop update: start or stop to match `active` and the window state. */
+    fun applyProps() = reconcile()
+
+    /** View destroyed: never run again. */
+    fun release() {
+        wantActive = false
+        reconcile()
     }
 
-    fun stop() {
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        attached = true
+        reconcile()
+    }
+
+    override fun onDetachedFromWindow() {
+        attached = false
+        reconcile()
+        super.onDetachedFromWindow()
+    }
+
+    /** The one place that decides: run while active and attached. Main thread only; start/stop are idempotent. */
+    private fun reconcile() {
+        if (wantActive && attached) start() else stop()
+    }
+
+    private fun stop() {
         source?.stop()
         source = null
         engine?.close()
@@ -56,13 +79,16 @@ class PoseCameraView(context: Context, appContext: AppContext) : ExpoView(contex
         if (source != null) return
         val owner = appContext.currentActivity as? LifecycleOwner ?: return emitError("카메라 화면을 열 수 없어요.")
         val e = try {
-            PoseEngine(context, model, PoseOptions.fromJson(detectorJson), ::emitPose, ::emitEngine)
+            PoseEngine(context, model, PoseOptions.fromJson(detectorJson), ::emitPose, ::emitEngine, ::emitError)
         } catch (ex: Exception) {
-            return emitError(ex.message ?: "자세 인식을 시작하지 못했어요.")
+            Log.e(TAG, "pose engine failed to start", ex)
+            return emitError("자세 인식을 시작하지 못했어요.")
         }
         engine = e
         emitEngine(e.delegate)
-        source = FrontCameraSource(context).also { it.start(owner, previewView.surfaceProvider) { frame -> e.detect(frame) } }
+        source = FrontCameraSource(context).also {
+            it.start(owner, previewView.surfaceProvider, { frame -> e.detect(frame) }, ::emitError)
+        }
     }
 
     /** Called on MediaPipe's thread. Expo map events cannot carry null: nobody in view = empty lists. */
@@ -94,6 +120,7 @@ class PoseCameraView(context: Context, appContext: AppContext) : ExpoView(contex
     }
 
     companion object {
+        private const val TAG = "PoseCameraView"
         private const val N = 33
     }
 }

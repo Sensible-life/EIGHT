@@ -15,8 +15,8 @@ class Frame(val bitmap: Bitmap, val tMs: Long, val sensorMs: Double, val seq: Lo
  * Only this part changes with the camera; pose and tracking stay the same.
  */
 interface FrameSource {
-    /** Start delivering frames; [onFrame] runs on the source's own thread. [preview] shows the camera on screen, if the source can. */
-    fun start(owner: LifecycleOwner, preview: Preview.SurfaceProvider?, onFrame: (Frame) -> Unit)
+    /** Start delivering frames; [onFrame] runs on the source's own thread; [onError] gets a short Korean message when the camera cannot start.[preview] shows the camera on screen, if the source can. */
+    fun start(owner: LifecycleOwner, preview: Preview.SurfaceProvider?, onFrame: (Frame) -> Unit, onError: (String) -> Unit)
 
     fun stop()
 }

@@ -28,7 +28,7 @@ class FrontCameraSource(private val context: Context) : FrameSource {
     private var useCases: List<UseCase> = emptyList()
     private var seq = 0L
 
-    override fun start(owner: LifecycleOwner, preview: Preview.SurfaceProvider?, onFrame: (Frame) -> Unit) {
+    override fun start(owner: LifecycleOwner, preview: Preview.SurfaceProvider?, onFrame: (Frame) -> Unit, onError: (String) -> Unit) {
         running = true
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
@@ -47,10 +47,16 @@ class FrontCameraSource(private val context: Context) : FrameSource {
                 .build()
             analysis.setAnalyzer(executor) { image ->
                 val tMs = SystemClock.elapsedRealtime()
-                val sensorMs = image.imageInfo.timestamp / 1e6
-                val bitmap = image.toBitmap()
-                image.close()
-                onFrame(Frame(bitmap, tMs, sensorMs, ++seq))
+                val frame = try {
+                    val sensorMs = image.imageInfo.timestamp / 1e6
+                    Frame(image.toBitmap(), tMs, sensorMs, ++seq)
+                } catch (e: Exception) { // skip this frame; never let it escape the camera thread
+                    Log.w(TAG, "frame conversion failed", e)
+                    null
+                } finally {
+                    image.close() // always, or KEEP_ONLY_LATEST stalls
+                }
+                if (frame != null) onFrame(frame)
             }
             val cases = listOfNotNull(
                 preview?.let { surface -> Preview.Builder().setResolutionSelector(selector).build().also { it.setSurfaceProvider(surface) } },
@@ -63,6 +69,7 @@ class FrontCameraSource(private val context: Context) : FrameSource {
                 useCases = cases
             } catch (e: Exception) {
                 Log.e(TAG, "front camera failed to start", e)
+                onError("카메라를 시작하지 못했어요.")
             }
         }, ContextCompat.getMainExecutor(context))
     }

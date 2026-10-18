@@ -12,7 +12,7 @@ class PoseCameraModule : Module() {
             Prop("model") { view: PoseCameraView, model: String -> view.model = model }
             Prop("detectorJson") { view: PoseCameraView, json: String -> view.detectorJson = json }
             OnViewDidUpdateProps { view: PoseCameraView -> view.applyProps() }
-            OnViewDestroys { view: PoseCameraView -> view.stop() }
+            OnViewDestroys { view: PoseCameraView -> view.release() }
         }
     }
 }
