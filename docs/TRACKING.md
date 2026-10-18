@@ -29,12 +29,13 @@ npm run android -- --check
 ```
 - Windows: `scripts/android.cjs`가 `java.exe`를 찾아 `.\gradlew.bat`을 실행한다. `npm run android -- --check`는 환경만 점검하고, `npm run build:android`는 APK만 빌드한다.
 - 모델 파일이 없으면 Gradle이 안내 메시지와 함께 실패한다. 그때 `npm run models`를 실행한다.
+- EAS 클라우드 빌드에는 git 제외된 모델이 없으므로 `eas-build-post-install` 훅(`npm run models`)이 빌드 중에 내려받는다.
 - 중간에 끊긴 빌드 뒤에 CMake가 "deleting depfile: Permission denied"를 내면 `app\android`에서 `.\gradlew.bat --stop` 후 다시 빌드한다.
 - Xiaomi/MIUI 폰은 개발자 옵션의 **"USB를 통한 설치"**를 켜기 전까지 `adb install`이 `INSTALL_FAILED_USER_RESTRICTED`로 실패한다.
 
 ### 테스트 작성과 정답 비교
 - 트래킹 테스트는 `scripts/tracking/*.test.cjs`이고, `scripts/load-ts.cjs`가 TS 모듈을 매번 새 vm realm에서 실행한다. realm이 다르면 strict `deepEqual`이 프로토타입을 비교해 실패하므로, 테스트는 `node:assert/strict` 대신 `scripts/tracking/assert.cjs`(realm에 안전한 deepEqual)를 쓴다.
-- 정답 테스트(`golden.test.cjs`)는 모든 숫자를 1e-6 안에서 비교한다(설계 §5.1). 허용오차 표는 없다. `pyRound`는 Python `round()`처럼 정확한 십진 값으로 .5 동점을 정한다.
+- 정답 테스트(`golden.test.cjs`)는 모든 숫자를 상대 오차 1e-6으로 비교한다(설계 §5.1). 허용오차 표는 없다. `pyRound`는 Python `round()`처럼 정확한 십진 값으로 .5 동점을 정한다.
 - 정답 데이터는 id403의 `golden-export` 브랜치(커밋 b51bb65), `tools/export_golden.py`에서 만든다.
 
 정답 데이터 다시 만들기 (id403 로직을 바꾼 경우만):
@@ -60,7 +61,7 @@ cd <id403>
 | `UsageMessage` (type 없음) | 10 Hz × 창 3개 | `t`, `window` (`8count` · `recent` · `session`), `segments` {head, torso, arm_l, arm_r, leg_l, leg_r}, `level` {low, mid, high}, `current_level`, `underused`, `tracking_ok` |
 | `status` | 10 Hz | `t`, `state` (waiting · calibrating · tracking), `progress`, `session_s` |
 | `feedback` | 드물게 | `t`, `kind` (segment_unexplored · level_unexplored · explored), `target`, `text` |
-| `pose` | 프레임마다 | `t`, `aspect`, `lm` (33 × [x, y, visibility], 거울 반전 안 함) |
+| `pose` | 사람이 잡힌 프레임마다 | `t`, `aspect`, `lm` (33 × [x, y, visibility], 거울 반전 안 함) |
 | `perf` | 1 Hz | `t`, `source_fps`, `pose_fps`, `detect_rate`, `lat_ms` {capture_pose, pipeline} {p50, p95}, `capture_from`, `model`, `delegate`, `errors` |
 
 - `window: "8count"`은 이 앱에서 "곡의 현재 8카운트"다(id403에서는 최근 4초).

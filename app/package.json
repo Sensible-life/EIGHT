@@ -50,6 +50,7 @@
     "test:library": "node scripts/test-library.cjs",
     "test:motion": "node scripts/test-motion.cjs",
     "models": "node scripts/download-models.cjs",
+    "eas-build-post-install": "npm run models",
     "test:tracking": "node scripts/test-tracking.cjs",
     "build:android": "node scripts/android.cjs --build-only"
   },
