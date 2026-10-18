@@ -99,6 +99,9 @@ export default function CameraTab({ store, playing, onPlay }: Props) {
   const targets = usage ? unexploredTargets(usage.underused, usage.level, DEFAULT_CONFIG.feedback.level_min_share) : [];
   const count = view.count === null ? (view.plan === 'eights' ? '도입' : '') : `${view.count} / 8`;
   const busy = phase.kind !== 'idle';
+  // Readable from 2.5-3 m: the countdown seconds, then the stand-still progress, large over the preview.
+  const big = phase.kind === 'countdown' ? String(secondsLeft(phase, now))
+    : view.status?.state === 'calibrating' ? `${Math.round((view.status.progress ?? 0) * 100)}%` : '';
   return (
     <View style={s.root}>
       <View style={s.camera}>
@@ -108,6 +111,7 @@ export default function CameraTab({ store, playing, onPlay }: Props) {
         )}
         <SkeletonOverlay pose={view.pose} shares={view.usage.session?.segments ?? null} underused={usage?.underused ?? []}
           boxAspect={BOX_ASPECT} visibility={DEFAULT_CONFIG.pose.visibility_threshold} />
+        {!!big && <View style={s.bigWrap} pointerEvents="none"><Text style={s.big} accessibilityElementsHidden>{big}</Text></View>}
         <Text style={s.hud}>{hudText(view)}</Text>
       </View>
       <Text style={s.status} accessibilityLiveRegion="polite">{statusText(view, phase, now, playing)}</Text>
@@ -148,6 +152,8 @@ export default function CameraTab({ store, playing, onPlay }: Props) {
 const s = StyleSheet.create({
   root: { gap: 14 },
   camera: { width: '100%', aspectRatio: BOX_ASPECT, borderRadius: 24, overflow: 'hidden', backgroundColor: C.text },
+  bigWrap: { ...StyleSheet.absoluteFill,alignItems: 'center', justifyContent: 'center' },
+  big: { color: C.accent, fontSize: 96, lineHeight: 110, fontWeight: '700', fontVariant: ['tabular-nums'], textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 8 },
   hud: { position: 'absolute', left: 12, bottom: 10, color: '#FFFFFF', fontSize: 10, fontVariant: ['tabular-nums'] },
   status: { color: C.text, fontSize: 15, fontWeight: '600' },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
