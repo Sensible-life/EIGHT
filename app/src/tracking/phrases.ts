@@ -1,9 +1,11 @@
 // Korean cue phrases (id403 feedback/phrases.py): an observation + an open suggestion, never how to move.
 // Comma phrasing avoids Korean particle agreement (이/가, 을/를) with the inserted label.
-import type { CueKind, CueTarget, Segment } from './types';
+import type { CueKind, CueTarget, Level, Segment } from './types';
 
 export const SEGMENT_LABELS: Record<Segment, string> = { head: '머리', torso: '몸통', arm_l: '왼팔', arm_r: '오른팔', leg_l: '왼다리', leg_r: '오른다리' };
 export const LEVEL_LABELS: Record<'low' | 'high', string> = { low: '낮은 높이', high: '높은 곳' };
+/** Display names of the three height bands, for the level share readout. */
+export const LEVEL_NAMES: Record<Level, string> = { low: '낮음', mid: '중간', high: '높음' };
 
 const TEMPLATES: Record<string, string[]> = {
   segment_unexplored: ['{name}, 아직 조용해요. 한번 깨워볼까요?', '{name} 쪽은 아직 안 가봤어요. 한번 써볼까요?', '{name}, 이번 에잇에 한번 써볼까요?'],
