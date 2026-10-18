@@ -1,0 +1,25 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+group = 'com.systemdesign'
+version = '0.1.0'
+android {
+  namespace 'expo.modules.posecamera'
+  defaultConfig { versionCode 1; versionName '0.1.0' }
+}
+dependencies {
+  def camerax = '1.4.2'
+  implementation "androidx.camera:camera-core:$camerax"
+  implementation "androidx.camera:camera-camera2:$camerax"
+  implementation "androidx.camera:camera-lifecycle:$camerax"
+  implementation "androidx.camera:camera-view:$camerax"
+  implementation 'com.google.mediapipe:tasks-vision:1.0.0'
+}
+// The pose model is downloaded, never committed (public repo).
+def poseModel = file('src/main/assets/models/pose_landmarker_lite.task')
+tasks.named('preBuild') {
+  doFirst {
+    if (!poseModel.exists()) throw new GradleException("Missing ${poseModel}. Run in app/: npm run models")
+  }
+}
