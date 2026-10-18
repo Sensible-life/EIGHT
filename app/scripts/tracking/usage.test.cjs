@@ -170,3 +170,17 @@ const snap = (a, w, t, stamp) => a.snapshot(w, { activeMs: t, tMs: t }, stamp);
   close(m.segments.arm_l, 1);
   assert.equal(m.tracking_ok, false, 'nobody counted in the last second of camera time');
 }
+{
+  // one NaN / Infinity score must not poison the totals (they are saved and validated strictly)
+  const { addToTotals } = load('src/tracking/usage.ts');
+  const t = emptyTotals();
+  const scores = { head: 0.5, torso: NaN, arm_l: Infinity, arm_r: 1, leg_l: 0, leg_r: 0 };
+  const observed = { head: true, torso: true, arm_l: true, arm_r: true, leg_l: true, leg_r: true };
+  addToTotals(t, { tMs: 0, level: 'mid', scores, observed, detected: true });
+  assert.equal(t.frames, 1);
+  assert.equal(t.score.torso, 0);
+  assert.equal(t.score.arm_l, 0);
+  assert.equal(t.observed.torso, 0, 'a non-finite segment counts as not observed');
+  assert.equal(t.observed.head, 1);
+  assert.equal(t.score.arm_r, 1);
+}

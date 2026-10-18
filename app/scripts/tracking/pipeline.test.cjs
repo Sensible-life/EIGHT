@@ -76,3 +76,14 @@ function armsOnly(i, r) {
   p.step(t, frame(t));
   assert.equal(p.activeMs, before + DT, 'only the step after resuming counts');
 }
+{
+  // frames stop for a minute while the music plays (camera tab left): the gap adds at most app.max_active_gap_s
+  const p = new LivePipeline(CFG);
+  let t = 0;
+  for (; t <= 7000; t += DT) p.step(t, frame(t), undefined, STAMP);
+  const before = p.activeMs;
+  t += 60_000;
+  p.step(t, frame(t), undefined, STAMP);
+  p.step(t + DT, frame(t + DT), undefined, STAMP);
+  assert.ok(p.activeMs - before <= 1000 + DT, `active clock jumped by ${p.activeMs - before} ms`);
+}

@@ -86,23 +86,42 @@ function harness({ playing = true, stepMs = 66 } = {}) {
   assert.equal(h.store.getView().cue, null);
 }
 {
-  const h = harness();
+  const h = harness({ stepMs: 100 });
   h.store.handleEngine({ model: 'lite', delegate: 'cpu' });
   assert.deepEqual(h.store.getView().engine, { model: 'lite', delegate: 'cpu' });
   h.store.handleError('카메라 화면을 열 수 없어요.');
   assert.equal(h.store.getView().error, '카메라 화면을 열 수 없어요.');
+  h.send(); h.send(); // frames flow again (the view refreshes at 15 Hz): the error is over
+  assert.equal(h.store.getView().error, null);
+  h.store.handleError('다시 실패');
+  h.store.handleEngine({ model: 'lite', delegate: 'cpu' });
+  assert.equal(h.store.getView().error, null, 'a restarted camera clears the error');
 }
 {
+  // a camera restart resets the perf window (the frame counter starts over)
+  const h = harness();
+  for (let i = 0; i < 10; i++) h.send();
+  let before = 0;
+  h.store.session.perf.reset = () => { before++; };
+  h.store.handleEngine({ model: 'lite', delegate: 'gpu' });
+  assert.equal(before, 1);
+}
+{
+  // a fresh store owes the dance-spot measurement: the tracker calibrating on the dancer at the phone does not count
   const h = harness();
   for (let i = 0; i < 40; i++) h.send();
-  assert.equal(h.store.calibrated, true);
+  assert.equal(h.store.trackerState, 'tracking');
+  assert.equal(h.store.calibrated, false);
   h.store.recalibrate();
   assert.equal(h.store.trackerState, 'waiting');
   assert.equal(h.store.calibrated, false);
+  for (let i = 0; i < 40; i++) h.send();
+  assert.equal(h.store.calibrated, true);
 }
 {
   // [다시 맞추기]: the next [춤 시작] must measure again, even though the tracker re-calibrates on its own
   const h = harness();
+  h.store.recalibrate();
   for (let i = 0; i < 40; i++) h.send();
   assert.equal(h.store.calibrated, true);
   h.store.requestRecalibration();

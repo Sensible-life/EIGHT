@@ -31,6 +31,7 @@ export class LivePipeline {
   readonly accumulator: UsageAccumulator;
   readonly engine: FeedbackEngine;
   private readonly publishMs: number;
+  private readonly maxGapMs: number;
   private nextPub: number | null = null;
   private sessionStart: number | null = null;
   private active = 0; // aggregation clock: advances only between frames aggregated back to back
@@ -50,6 +51,7 @@ export class LivePipeline {
     }, plan);
     this.engine = new FeedbackEngine(cfg.feedback);
     this.publishMs = 1000 / agg.publish_hz;
+    this.maxGapMs = 1000 * cfg.app.max_active_gap_s;
   }
 
   get activeMs(): number {
@@ -80,7 +82,8 @@ export class LivePipeline {
     const res = this.tracker.update(tMs, pose);
     if (res && ctx.playing) {
       if (this.sessionStart === null) this.sessionStart = tMs;
-      if (this.lastAggT !== null) this.active += tMs - this.lastAggT;
+      // a longer gap (camera tab left while the music plays, a stall) counts as at most max_active_gap_s
+      if (this.lastAggT !== null) this.active += Math.min(tMs - this.lastAggT, this.maxGapMs);
       this.lastAggT = tMs;
       this.accumulator.add(res, this.active, ctx.musicT);
     } else {

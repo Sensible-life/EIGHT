@@ -31,6 +31,7 @@ export type TrackingConfig = {
     min_tracked_s: number; // sessions tracked shorter than this stay out of the analysis card
     min_bpm: number; // job.tempo outside [min_bpm, max_bpm] is ignored (fixed 4 s grid instead)
     max_bpm: number;
+    max_active_gap_s: number; // longer gaps between aggregated frames (tab left, stall) add at most this much tracked time
   };
 };
 
@@ -60,7 +61,7 @@ export const DEFAULT_CONFIG: TrackingConfig = {
     level_min_share: 0.1, level_explored_share: 0.3, segment_explored_ratio: 0.6, // (tune)
     segment_targets: ['arm_l', 'arm_r', 'leg_l', 'leg_r'], // (tune) head / torso read as quiet too often
   },
-  app: { back_jump_s: 0.2, countdown_s: 5, cue_show_s: 8, view_hz: 15, min_tracked_s: 30, min_bpm: 30, max_bpm: 300 },
+  app: { back_jump_s: 0.2, countdown_s: 5, cue_show_s: 8, view_hz: 15, min_tracked_s: 30, min_bpm: 30, max_bpm: 300, max_active_gap_s: 1 },
 };
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends unknown[] ? T[K] : T[K] extends object ? DeepPartial<T[K]> : T[K] };

@@ -10,11 +10,15 @@ import type { FrameResult, Level, Segment, UsageMessage, UsageTotals, WindowName
 
 export const emptyTotals = (): UsageTotals => ({ frames: 0, score: bySegment(() => 0), observed: bySegment(() => 0), levels: byLevel(() => 0) });
 
+/** A segment with a non-finite score counts as not observed in that frame (one bad landmark must not poison the saved totals). */
 export function addToTotals(t: UsageTotals, r: FrameResult): void {
   t.frames += 1;
   if (r.level) t.levels[r.level] += 1;
   if (!r.scores || !r.observed) return;
-  for (const s of SEGMENT_NAMES) if (r.observed[s]) { t.observed[s] += 1; t.score[s] += r.scores[s] ?? 0; }
+  for (const s of SEGMENT_NAMES) {
+    const score = r.scores[s] ?? 0;
+    if (r.observed[s] && Number.isFinite(score)) { t.observed[s] += 1; t.score[s] += score; }
+  }
 }
 
 export const mergeTotals = (a: UsageTotals, b: UsageTotals): UsageTotals => ({

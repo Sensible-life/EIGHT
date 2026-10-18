@@ -53,7 +53,9 @@ export class LiveTrackingStore {
   private lastFlush = -Infinity;
   private cueAtMs = 0;
   private lastTMs = 0;
-  private mustCalibrate = false; // [다시 맞추기] pressed: the next [춤 시작] measures again
+  // True until a [춤 시작] measurement ran: the tracker also calibrates on the dancer standing at the phone, which
+  // says nothing about the dance spot, so the first [춤 시작] (and the first after [다시 맞추기]) always measures again.
+  private mustCalibrate = true;
   private readonly wallNow: () => number;
 
   constructor(private readonly cfg: TrackingConfig = DEFAULT_CONFIG, o: { wallNowMs?: () => number; perfNowMs?: () => number } = {}) {
@@ -125,12 +127,13 @@ export class LiveTrackingStore {
     this.session.perf.captureFrom = e.captureFrom;
     if (!pose) this.pending.pose = null; // nobody in view: clear the skeleton
     this.session.step(e.tMs, pose, e.aspect, { playing: music.playing, musicT }, { captureMs: e.latencyMs, sourceFrames: e.seq });
-    this.set({ playing: music.playing, count: countInEight(this.plan, musicT) });
+    this.set({ playing: music.playing, count: countInEight(this.plan, musicT), error: null }); // frames flowing: an earlier error is over
   }
 
   handleEngine(e: { model: string; delegate: string }): void {
     this.session.setEngine(e.model, e.delegate);
-    this.set({ engine: { model: e.model, delegate: e.delegate } }, true);
+    this.session.perf.reset(); // the camera restarted: its frame counter starts over
+    this.set({ engine: { model: e.model, delegate: e.delegate }, error: null }, true);
   }
 
   handleError(message: string): void {
