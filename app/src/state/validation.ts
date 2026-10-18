@@ -1,6 +1,7 @@
 import type { Library } from './model';
 import { defaultExtras } from './extras';
 import { analyzeTrace, parseTrace } from '../motion/analyze';
+import { validTracking } from '../tracking/validate';
 
 const object = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
 const text = (v: unknown): v is string => typeof v === 'string' && v.length <= 10000;
@@ -26,7 +27,7 @@ export function validateLibrary(raw: string, fallback: Library): Library {
     && num(s.position) && num(s.duration) && num(s.listened) && num(s.master, 1.5) && record(s.layerSeconds, num)
     && record(s.mix, m => object(m) && num(m.volume, 1.5) && typeof m.muted === 'boolean' && typeof m.solo === 'boolean')
     && (s.loop === null || (object(s.loop) && num(s.loop.start) && num(s.loop.end) && s.loop.end > s.loop.start && s.loop.end <= s.duration))
-    && (s.missionWeek === undefined || text(s.missionWeek))));
+    && (s.missionWeek === undefined || text(s.missionWeek)) && (s.tracking === undefined || validTracking(s.tracking))));
   requireValid(new Set(x.sessions.map((s: any) => s.id)).size === x.sessions.length && list(x.joinedWeeks, text));
   requireValid(x.extras === undefined || object(x.extras));
   const e = { ...defaultExtras(), ...x.extras, watch: { ...defaultExtras().watch, ...x.extras?.watch } };

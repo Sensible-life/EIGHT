@@ -38,7 +38,11 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
   const [transportBusy, setTransportBusy] = useState(false);
   const [tab, setTab] = useState<'mixer' | 'camera'>('mixer');
   // One tracking session per practice session; it outlives tab switches.
-  const tracking = useMemo(() => new LiveTrackingStore(DEFAULT_CONFIG, { perfNowMs }), []);
+  const tracking = useMemo(() => {
+    const store = new LiveTrackingStore(DEFAULT_CONFIG, { perfNowMs });
+    store.importTracking(initial?.tracking); // resumed session: keep counting from its saved totals
+    return store;
+  }, [initial]);
   const [waveforms, setWaveforms] = useState<Record<string, number[]>>({});
   const [levels, setLevels] = useState<Record<string, number>>({});
   useEffect(() => {
@@ -109,18 +113,18 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
     return () => clearInterval(timer);
   }, [playing]);
   useEffect(() => {
-    const timer = setInterval(() => { if (latest.current.duration > 0) onSnapshot?.(latest.current); }, 5000);
-    return () => { clearInterval(timer); if (latest.current.duration > 0) onSnapshot?.(latest.current); };
-  }, [onSnapshot]);
+    const timer = setInterval(() => { if (latest.current.duration > 0) onSnapshot?.(withTracking(tracking, latest.current)); }, 5000);
+    return () => { clearInterval(timer); if (latest.current.duration > 0) onSnapshot?.(withTracking(tracking, latest.current)); };
+  }, [onSnapshot, tracking]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', state => {
       if (state !== 'active') {
         player.current?.pause(); setPlaying(false); if (player.current) setPos(player.current.position);
-        if (latest.current.duration > 0) onSnapshot?.(latest.current);
+        if (latest.current.duration > 0) onSnapshot?.(withTracking(tracking, latest.current));
       }
     });
     return () => subscription.remove();
-  }, [onSnapshot]);
+  }, [onSnapshot, tracking]);
   const patch = (stem: string, changes: Partial<Mix[string]>) => setMix(value => ({ ...value, [stem]: { ...value[stem], ...changes } }));
   const perform = async (action: (p: StemPlayer) => Promise<void> | void) => {
     const p = player.current;
@@ -174,7 +178,7 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
         </>}
         {!!analysisNotice && <Text style={s.small}>{analysisNotice}</Text>}
         </View>
-        {onFinish && <Pressable accessibilityRole="button" onPress={() => { void perform(async p => { await p.pause(); onFinish({ ...latest.current, position: p.position, listened: listened.current, layerSeconds: { ...layerSeconds.current } }); }); }} style={[s.primary, { marginTop: 24, alignItems: 'center' }]}><Text style={s.primaryText}>세션 마치고 기록 저장</Text></Pressable>}
+        {onFinish && <Pressable accessibilityRole="button" onPress={() => { void perform(async p => { await p.pause(); onFinish(withTracking(tracking, { ...latest.current, position: p.position, listened: listened.current, layerSeconds: { ...layerSeconds.current } })); }); }} style={[s.primary, { marginTop: 24, alignItems: 'center' }]}><Text style={s.primaryText}>세션 마치고 기록 저장</Text></Pressable>}
         <Text style={s.footerNote}>소리를 덜어내면, 새로운 음악이 들립니다.</Text>
       </ScrollView>
       <View style={s.dock}>
@@ -191,6 +195,12 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
     </View>
   );
 }
+/** The playback snapshot plus the camera tab's totals, once anything was tracked (or restored). */
+function withTracking(store: LiveTrackingStore, snap: PlaybackSnapshot): PlaybackSnapshot {
+  const tracking = store.exportTracking();
+  return tracking ? { ...snap, tracking } : snap;
+}
+
 const s = StyleSheet.create({
   tabs: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 14, padding: 4, marginBottom: 22 },
   tab: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
