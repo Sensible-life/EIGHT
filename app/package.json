@@ -48,6 +48,7 @@
     "test:upload": "node scripts/test-upload.cjs",
     "test:library": "node scripts/test-library.cjs",
     "test:motion": "node scripts/test-motion.cjs",
+    "test:tracking": "node scripts/test-tracking.cjs",
     "build:android": "node scripts/android.cjs --build-only"
   },
   "private": true
