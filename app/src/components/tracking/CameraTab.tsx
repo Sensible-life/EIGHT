@@ -65,9 +65,12 @@ export default function CameraTab({ store, playing, onPlay }: Props) {
       .then(r => { if (alive) setPermission(r.granted ? 'granted' : 'denied'); })
       .catch(() => { if (alive) setPermission('denied'); });
     void check(true);
-    const sub = AppState.addEventListener('change', state => { if (state === 'active') void check(false); });
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') void check(false);
+      else dispatch({ type: 'cancel' }); // leaving the app ends a pending countdown / calibration wait
+    });
     return () => { alive = false; sub.remove(); };
-  }, []);
+  }, [dispatch]);
 
   // Drives the countdown and waits for calibration while [춤 시작] is running.
   useEffect(() => {
@@ -95,7 +98,7 @@ export default function CameraTab({ store, playing, onPlay }: Props) {
   );
 
   const usage = view.usage[windowName];
-  const dim = !playing || !usage?.tracking_ok;
+  const dim = !playing || !usage?.tracking_ok || view.status?.state !== 'tracking'; // the usage kept after [다시 맞추기] is stale
   const targets = usage ? unexploredTargets(usage.underused, usage.level, DEFAULT_CONFIG.feedback.level_min_share) : [];
   const count = view.count === null ? (view.plan === 'eights' ? '도입' : '') : `${view.count} / 8`;
   const busy = phase.kind !== 'idle';
@@ -136,7 +139,11 @@ export default function CameraTab({ store, playing, onPlay }: Props) {
       {view.cue && <Text style={s.cue}>&quot;{view.cue.text}&quot;</Text>}
       <View style={s.actions}>
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: playing || busy }} disabled={playing || busy} style={[s.primary, (playing || busy) && s.off]}
-          onPress={() => dispatch({ type: 'press', nowMs: Date.now(), calibrated: store.calibrated, countdownMs: 1000 * DEFAULT_CONFIG.app.countdown_s })}>
+          onPress={() => {
+            const t = Date.now();
+            setNow(t); // the countdown readout must not show the time since the last tick
+            dispatch({ type: 'press', nowMs: t, calibrated: store.calibrated, countdownMs: 1000 * DEFAULT_CONFIG.app.countdown_s });
+          }}>
           <Text style={s.primaryText}>춤 시작</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: phase.kind === 'countdown' }} disabled={phase.kind === 'countdown'} style={[s.secondary, phase.kind === 'countdown' && s.off]}

@@ -1,6 +1,6 @@
 import Slider from '@react-native-community/slider';
 import { useKeepAwake } from 'expo-keep-awake';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Analysis, api, Job, lastIndexAtOrBefore } from '../api';
 import { initialMix, layerGain, Mix } from '../audio/mix';
@@ -38,11 +38,11 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
   const [transportBusy, setTransportBusy] = useState(false);
   const [tab, setTab] = useState<'mixer' | 'camera'>('mixer');
   // One tracking session per practice session; it outlives tab switches.
-  const tracking = useMemo(() => {
+  const [tracking] = useState(() => {
     const store = new LiveTrackingStore(DEFAULT_CONFIG, { perfNowMs });
     store.importTracking(initial?.tracking); // resumed session: keep counting from its saved totals
     return store;
-  }, [initial]);
+  });
   const [waveforms, setWaveforms] = useState<Record<string, number[]>>({});
   const [levels, setLevels] = useState<Record<string, number>>({});
   useEffect(() => {
