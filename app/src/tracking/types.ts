@@ -67,7 +67,23 @@ export type UsageTotals = {
   observed: Record<Segment, number>; // frames in which the segment was visible
   levels: Record<Level, number>; // frames per level
 };
-export type SessionTracking = { version: 1; trackedMs: number; totals: UsageTotals };
+export type Side = 'l' | 'r'; // the dancer's own left / right
+export type ReachDir = 'up' | 'side' | 'down';
+/** Move and space counts behind the analysis tab (moves.ts). Saved with the session; never landmarks. */
+export type MoveTotals = {
+  reach: Record<Side, Record<ReachDir, number>>;
+  clap: number; // hands brought together
+  circle: Record<Side, number>; // full arm circles
+  lift: Record<Side, { small: number; big: number }>;
+  legTravel: Record<Side, number>; // ankle path relative to the hip, in torso lengths
+  turnHalves: number; // half turns
+  jump: number;
+  low: number;
+  travel: Record<Side, number>; // steps out to the dancer's left / right
+  lean: Record<Side, number>;
+  spaceMs: number[]; // 9 cells, row-major: rows high / mid / low, columns the dancer's left / center / right
+};
+export type SessionTracking = { version: 1; trackedMs: number; totals: UsageTotals; moves?: MoveTotals }; // moves: absent in older saves
 
 /** One `onPose` event from the pose-camera module. Landmarks and timing only, no video. */
 export type PoseEvent = {

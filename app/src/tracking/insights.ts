@@ -1,7 +1,8 @@
 import { DEFAULT_CONFIG, shareOptions, type TrackingConfig } from './config';
 import { TIE_ORDER } from './feedback';
+import { emptyMoves, mergeMoves } from './moves';
 import { emptyTotals, mergeTotals, snapshotFromTotals } from './usage';
-import type { CueTarget, Level, Segment, SessionTracking, UsageTotals } from './types';
+import type { CueTarget, Level, MoveTotals, Segment, SessionTracking, UsageTotals } from './types';
 
 /** Not explored yet: underused parts, then low / high below `levelMinShare` (only when level was judged at all). */
 export function unexploredTargets(underused: Segment[], level: Record<Level, number>, levelMinShare: number): CueTarget[] {
@@ -31,4 +32,13 @@ export function trackingInsights(saved: (SessionTracking | undefined)[], cfg: Tr
     .map(([target, count]) => ({ target, count }))
     .sort((a, b) => b.count - a.count || TIE_ORDER.indexOf(a.target) - TIE_ORDER.indexOf(b.target));
   return { sessions: used.length, trackedMs: used.reduce((a, s) => a + s.trackedMs, 0), segments: all.segments, level: all.level, unexplored };
+}
+
+export type MoveInsights = { sessions: number; trackedMs: number; moves: MoveTotals };
+
+/** Analysis tab: move and space counts summed over the sessions tracked at least app.min_tracked_s (older saves have none). */
+export function moveInsights(saved: (SessionTracking | undefined)[], cfg: TrackingConfig = DEFAULT_CONFIG): MoveInsights | null {
+  const used = saved.filter((s): s is SessionTracking & { moves: MoveTotals } => !!s?.moves && s.trackedMs >= 1000 * cfg.app.min_tracked_s);
+  if (!used.length) return null;
+  return { sessions: used.length, trackedMs: used.reduce((a, s) => a + s.trackedMs, 0), moves: used.reduce((sum, s) => mergeMoves(sum, s.moves), emptyMoves()) };
 }

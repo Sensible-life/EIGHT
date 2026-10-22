@@ -34,7 +34,7 @@ const toPython = r => r && { t_ms: r.tMs, detected: r.detected, scores: r.scores
 for (const file of files) {
   const fx = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, file))).toString('utf8'));
   for (const [section, values] of Object.entries(DEFAULT_CONFIG)) {
-    if (section === 'app') continue;
+    if (section === 'app' || section === 'moves') continue; // app-only sections
     for (const [k, v] of Object.entries(values))
       assert.deepEqual(v, fx.config[section][k], `${fx.name}: config ${section}.${k} differs from id403 default.yaml`);
   }

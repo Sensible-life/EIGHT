@@ -1,8 +1,10 @@
 // One live session: frame in -> every outgoing message (id403 session.py, without client commands).
 //   pose message -> LivePipeline (status / usage / feedback) -> perf (1 Hz)
+// Alongside, MoveDetector counts moves and space for the analysis tab; it sends no messages.
 // The app keeps one per practice session; exportTracking() is what gets saved with it.
 import type { TrackingConfig } from './config';
 import { pyRound } from './math';
+import { MoveDetector } from './moves';
 import { PerfMeter } from './perf';
 import { ALWAYS_PLAYING, LivePipeline, tickMessages, type StepContext, type Tick } from './pipeline';
 import type { EightPlan } from './windows';
@@ -29,6 +31,7 @@ export const poseMessage = (pose: PoseFrame, aspect: number, stampMs: number): P
 export class LiveSession {
   readonly pipeline: LivePipeline;
   readonly perf: PerfMeter;
+  readonly moves: MoveDetector;
   lastTick: Tick | null = null;
   lastCue: FeedbackCue | null = null;
   private readonly perfEveryMs: number;
@@ -39,6 +42,7 @@ export class LiveSession {
 
   constructor(cfg: TrackingConfig, private readonly publish: (m: OutMessage) => void = () => {}, o: SessionOptions = {}) {
     this.pipeline = new LivePipeline(cfg, o.plan);
+    this.moves = new MoveDetector(cfg);
     this.perf = new PerfMeter(cfg.perf.window_s, o.model ?? '', o.delegate ?? 'cpu', o.captureFrom ?? 'analyzer');
     this.perfEveryMs = 1000 / cfg.perf.publish_hz;
     this.clock = o.clockMs ?? (() => Date.now());
@@ -48,6 +52,7 @@ export class LiveSession {
   /** New session: recalibrate and forget usage, including imported totals. */
   reset(): void {
     this.pipeline.reset();
+    this.moves.reset();
     this.lastTick = this.lastCue = null;
     this.trackedBase = 0;
   }
@@ -55,6 +60,7 @@ export class LiveSession {
   /** Measure the standing pose again; the session's totals stay. */
   recalibrate(): void {
     this.pipeline.recalibrate();
+    this.moves.recalibrate();
   }
 
   setPlan(plan: EightPlan): void {
@@ -80,6 +86,8 @@ export class LiveSession {
     if (pose && aspect) this.publish(poseMessage(pose, aspect, stamp));
     const t0 = this.perfNow();
     const tick = this.pipeline.step(tMs, pose, ctx, stamp);
+    const state = this.pipeline.tracker.state;
+    this.moves.update(tMs, pose, aspect, state, ctx.playing && state === 'tracking');
     this.perf.add(tMs, pose !== null, extra.captureMs ?? null, this.perfNow() - t0, extra.sourceFrames ?? null);
     if (tick) {
       this.lastTick = tick;
@@ -95,12 +103,16 @@ export class LiveSession {
 
   /** What gets saved with the practice session: tracked time and running sums, never landmarks. */
   exportTracking(): SessionTracking {
-    return { version: 1, trackedMs: Math.round(this.trackedBase + this.pipeline.activeMs), totals: this.pipeline.accumulator.exportTotals() };
+    return {
+      version: 1, trackedMs: Math.round(this.trackedBase + this.pipeline.activeMs), totals: this.pipeline.accumulator.exportTotals(),
+      ...(this.moves.measured && { moves: this.moves.exportTotals() }),
+    };
   }
 
   /** Continue a saved session's totals (resume). Call before the first frame. */
   importTracking(saved: SessionTracking): void {
     this.pipeline.accumulator.importTotals(saved.totals);
+    if (saved.moves) this.moves.importTotals(saved.moves);
     this.trackedBase = saved.trackedMs;
   }
 }
