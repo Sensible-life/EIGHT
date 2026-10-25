@@ -32,3 +32,14 @@ assert.throws(() => decodeLibrary(JSON.stringify({ ...empty, sessions: [{ id: 'o
 assert.throws(() => decodeLibrary(JSON.stringify({ ...empty, extras: { posts: [{}] } }), empty));
 assert.equal(missionProgress(Array(8).fill(sessions[0]), week, 5), 5);
 console.log('PASS: old-version migration, custom mission goals, malformed nested backup validation');
+
+// Session tracking totals (camera tab): old sessions still load, broken values are rejected.
+const trackedProject = { id: 'p1', server: 'local', saved: true, updatedAt: 1, job: { id: 'demo-groove', name: 'demo', status: 'done', stage: 'done', progress: 1, createdAt: 1, config: { model: 'demo', shifts: 0, overlap: 0 } } };
+const trackedSession = { id: 's1', projectId: 'p1', startedAt: 1, position: 0, duration: 16, listened: 40, master: 0.8, layerSeconds: {}, mix: {}, loop: null };
+const perSegment = v => ({ head: v, torso: v, arm_l: v, arm_r: v, leg_l: v, leg_r: v });
+const savedTracking = { version: 1, trackedMs: 40000, totals: { frames: 600, score: perSegment(10), observed: perSegment(600), levels: { low: 0, mid: 600, high: 0 } } };
+const withSession = s => JSON.stringify({ ...empty, projects: [trackedProject], sessions: [s] });
+assert.equal(decodeLibrary(withSession(trackedSession), empty).sessions[0].tracking, undefined, 'sessions saved before tracking still load');
+assert.deepEqual(JSON.parse(JSON.stringify(decodeLibrary(withSession({ ...trackedSession, tracking: savedTracking }), empty).sessions[0].tracking)), savedTracking);
+assert.throws(() => decodeLibrary(withSession({ ...trackedSession, tracking: { ...savedTracking, totals: { ...savedTracking.totals, observed: perSegment(601) } } }), empty));
+console.log('PASS: session tracking totals load, round-trip and reject broken values');

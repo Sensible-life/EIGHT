@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# MediaPipe models (downloaded by `npm run models`)
+/modules/pose-camera/android/src/main/assets/models/

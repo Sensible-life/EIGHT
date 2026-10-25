@@ -10,6 +10,13 @@ import Timeline from '../components/Timeline';
 import WatchHapticsCard from '../components/WatchHapticsCard';
 import { C, fmtTime, STEM_LABELS } from '../theme';
 import { PlaybackSnapshot } from '../state/model';
+import CameraTab from '../components/tracking/CameraTab';
+import { DEFAULT_CONFIG } from '../tracking/config';
+import { LiveTrackingStore } from '../tracking/store';
+import { planFor } from '../tracking/windows';
+
+const TABS = [['mixer', '믹서'], ['camera', '카메라']] as const;
+const perfNowMs = () => performance.now();
 
 type Props = { server: string; job: Job; onBack: () => void; initialSnapshot?: PlaybackSnapshot; onSnapshot?: (value: PlaybackSnapshot) => void; onFinish?: (value: PlaybackSnapshot) => void };
 export default function PlayerScreen({ server, job, onBack, initialSnapshot, onSnapshot, onFinish }: Props) {
@@ -29,6 +36,13 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
   const [showAnalysis, setShowAnalysis] = useState(false), [reloading, setReloading] = useState(0);
   const [scrubbing, setScrubbing] = useState(false), [analysisNotice, setAnalysisNotice] = useState('');
   const [transportBusy, setTransportBusy] = useState(false);
+  const [tab, setTab] = useState<'mixer' | 'camera'>('mixer');
+  // One tracking session per practice session; it outlives tab switches.
+  const [tracking] = useState(() => {
+    const store = new LiveTrackingStore(DEFAULT_CONFIG, { perfNowMs });
+    store.importTracking(initial?.tracking); // resumed session: keep counting from its saved totals
+    return store;
+  });
   const [waveforms, setWaveforms] = useState<Record<string, number[]>>({});
   const [levels, setLevels] = useState<Record<string, number>>({});
   useEffect(() => {
@@ -63,6 +77,13 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
     return () => { alive = false; player.current = null; void p?.dispose().catch(() => {}); };
   }, [server, job, reloading, initial]);
   useEffect(() => {
+    tracking.setMusicSource(loadedPlayer ? () => ({ position: loadedPlayer.position, playing: loadedPlayer.playing }) : null);
+    return () => tracking.setMusicSource(null);
+  }, [tracking, loadedPlayer]);
+  useEffect(() => {
+    tracking.setPlan(planFor(analysis?.eights, analysis?.tempo ?? job.tempo, DEFAULT_CONFIG.aggregate.windows['8count_s']));
+  }, [tracking, analysis, job.tempo]);
+  useEffect(() => {
     if (!playing || scrubbing) return;
     const interval = setInterval(() => {
       const p = player.current;
@@ -92,18 +113,18 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
     return () => clearInterval(timer);
   }, [playing]);
   useEffect(() => {
-    const timer = setInterval(() => { if (latest.current.duration > 0) onSnapshot?.(latest.current); }, 5000);
-    return () => { clearInterval(timer); if (latest.current.duration > 0) onSnapshot?.(latest.current); };
-  }, [onSnapshot]);
+    const timer = setInterval(() => { if (latest.current.duration > 0) onSnapshot?.(withTracking(tracking, latest.current)); }, 5000);
+    return () => { clearInterval(timer); if (latest.current.duration > 0) onSnapshot?.(withTracking(tracking, latest.current)); };
+  }, [onSnapshot, tracking]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', state => {
       if (state !== 'active') {
         player.current?.pause(); setPlaying(false); if (player.current) setPos(player.current.position);
-        if (latest.current.duration > 0) onSnapshot?.(latest.current);
+        if (latest.current.duration > 0) onSnapshot?.(withTracking(tracking, latest.current));
       }
     });
     return () => subscription.remove();
-  }, [onSnapshot]);
+  }, [onSnapshot, tracking]);
   const patch = (stem: string, changes: Partial<Mix[string]>) => setMix(value => ({ ...value, [stem]: { ...value[stem], ...changes } }));
   const perform = async (action: (p: StemPlayer) => Promise<void> | void) => {
     const p = player.current;
@@ -114,6 +135,8 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
     finally { setTransportBusy(false); }
   };
   const seek = (time: number) => perform(p => p.seek(time));
+  // [춤 시작] plays only when stopped: StemPlayer.play() while playing would jump back to the paused position.
+  const startPlayback = () => { if (!player.current?.playing) void perform(p => p.play()); };
   const reset = () => { setMix(initialMix(Object.keys(mix))); setMaster(0.8); };
   const retry = () => { setLoadedPlayer(null); setError(null); setLoading('레이어를 다시 불러오는 중'); setPlaying(false); setPos(0); setLoopRange(null); setAnalysis(null); setAnalysisNotice(''); setMaster(0.8); setReloading(value => value + 1); };
   const beatIndex = analysis ? lastIndexAtOrBefore(analysis.beats, pos + 0.03, b => b.t) : -1;
@@ -132,6 +155,10 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
     <View style={s.root}>
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={s.top}><Pressable accessibilityRole="button" onPress={onBack} hitSlop={12}><Text style={s.back}>‹ 저장하고 나가기</Text></Pressable><Text style={s.eyebrow}>MY SESSION</Text></View>
+        <View style={s.tabs}>{TABS.map(([key, title]) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[s.tab, tab === key && s.tabOn]}><Text style={[s.tabText, tab === key && s.tabTextOn]}>{title}</Text></Pressable>)}</View>
+        {tab === 'camera' && <CameraTab store={tracking} playing={playing} onPlay={startPlayback} />}
+        {/* The mixer stays mounted (watch haptics keep running) and is only hidden on the camera tab. */}
+        <View style={tab === 'mixer' ? undefined : s.hidden}>
         <View style={s.hero}>
           <View style={s.tag}><View style={s.statusDot} /><Text style={s.tagText}>{Object.keys(mix).length} LAYERS READY</Text></View>
           <Text style={s.title} numberOfLines={2}>{name}</Text>
@@ -150,7 +177,8 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
           </View>}
         </>}
         {!!analysisNotice && <Text style={s.small}>{analysisNotice}</Text>}
-        {onFinish && <Pressable accessibilityRole="button" onPress={() => { void perform(async p => { await p.pause(); onFinish({ ...latest.current, position: p.position, listened: listened.current, layerSeconds: { ...layerSeconds.current } }); }); }} style={[s.primary, { marginTop: 24, alignItems: 'center' }]}><Text style={s.primaryText}>세션 마치고 기록 저장</Text></Pressable>}
+        </View>
+        {onFinish && <Pressable accessibilityRole="button" onPress={() => { void perform(async p => { await p.pause(); onFinish(withTracking(tracking, { ...latest.current, position: p.position, listened: listened.current, layerSeconds: { ...layerSeconds.current } })); }); }} style={[s.primary, { marginTop: 24, alignItems: 'center' }]}><Text style={s.primaryText}>세션 마치고 기록 저장</Text></Pressable>}
         <Text style={s.footerNote}>소리를 덜어내면, 새로운 음악이 들립니다.</Text>
       </ScrollView>
       <View style={s.dock}>
@@ -167,7 +195,19 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, onS
     </View>
   );
 }
+/** The playback snapshot plus the camera tab's totals, once anything was tracked (or restored). */
+function withTracking(store: LiveTrackingStore, snap: PlaybackSnapshot): PlaybackSnapshot {
+  const tracking = store.exportTracking();
+  return tracking ? { ...snap, tracking } : snap;
+}
+
 const s = StyleSheet.create({
+  tabs: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 14, padding: 4, marginBottom: 22 },
+  tab: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tabOn: { backgroundColor: C.cardHi },
+  tabText: { color: C.sub, fontSize: 13, fontWeight: '600' },
+  tabTextOn: { color: C.accent },
+  hidden: { display: 'none' },
   root: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center' }, content: { paddingHorizontal: 22, paddingBottom: 24 }, top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, paddingBottom: 28 }, back: { color: C.sub, fontSize: 13 }, eyebrow: { color: C.dim, fontSize: 10, fontWeight: '700', letterSpacing: 2.4 },
   hero: { marginBottom: 28 }, tag: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 }, statusDot: { width: 5, height: 5, backgroundColor: C.accent, borderRadius: 3 }, tagText: { color: C.accent, fontSize: 9, fontWeight: '700', letterSpacing: 1.8 }, title: { color: C.text, fontSize: 32, lineHeight: 40, fontWeight: '700', letterSpacing: -1.1, marginBottom: 8 }, sub: { color: C.sub, fontSize: 12 }, small: { color: C.dim, fontSize: 11, lineHeight: 18, marginTop: 5 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }, section: { color: C.text, fontSize: 18, fontWeight: '600' }, reset: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 8, backgroundColor: C.cardHi }, resetText: { color: C.sub, fontSize: 11 },
