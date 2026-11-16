@@ -63,5 +63,6 @@ class WatchHapticsModule : Module() {
       Unit
     }
     AsyncFunction("test") { request("test", JSONObject()); Unit }
+    AsyncFunction("mixer") { state: String -> request("mixer", JSONObject(state)).toString() }
   }
 }

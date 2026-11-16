@@ -9,7 +9,7 @@ import type {
   StatusMessage, TrackerState, UsageMessage, WindowName,
 } from './types';
 
-export type MusicSource = () => { position: number; playing: boolean };
+export type MusicSource = () => { position: number; playing: boolean; rate?: number };
 export type PlanName = 'eights' | 'tempo' | 'fixed' | 'rolling';
 export type TrackingView = {
   status: StatusMessage | null;
@@ -25,8 +25,8 @@ export type TrackingView = {
 };
 
 /** Song position of a frame: the player position now, minus how old the frame is. */
-export function frameMusicTime(position: number, ageMs: number, emitWallMs: number, wallNowMs: number): number {
-  return position - (ageMs + Math.max(0, wallNowMs - emitWallMs)) / 1000;
+export function frameMusicTime(position: number, ageMs: number, emitWallMs: number, wallNowMs: number, rate = 1): number {
+  return position - (ageMs + Math.max(0, wallNowMs - emitWallMs)) / 1000 * rate;
 }
 
 /** The event's pose, or null when nobody is in view (the module sends empty arrays then). */
@@ -57,6 +57,9 @@ export class LiveTrackingStore {
   // says nothing about the dance spot, so the first [춤 시작] (and the first after [다시 맞추기]) always measures again.
   private mustCalibrate = true;
   private readonly wallNow: () => number;
+  private recording = false;
+  private capturing = false;
+  private committedBeforeTake: SessionTracking | null = null;
 
   constructor(private readonly cfg: TrackingConfig = DEFAULT_CONFIG, o: { wallNowMs?: () => number; perfNowMs?: () => number } = {}) {
     this.wallNow = o.wallNowMs ?? (() => Date.now());
@@ -84,6 +87,8 @@ export class LiveTrackingStore {
 
   getView = (): TrackingView => this.view;
 
+  getMusicSnapshot(): { position: number; playing: boolean } | null { return this.music?.() ?? null; }
+
   setMusicSource(source: MusicSource | null): void {
     this.music = source;
   }
@@ -100,8 +105,32 @@ export class LiveTrackingStore {
 
   /** What to save with the practice session; null until something was tracked or restored. */
   exportTracking(): SessionTracking | null {
-    const s = this.session.exportTracking();
+    const s = this.recording ? this.committedBeforeTake : this.session.exportTracking();
+    if (!s) return null;
     return s.trackedMs > 0 || s.totals.frames > 0 ? s : null;
+  }
+
+  /** A take is provisional until its video is saved. */
+  beginTake(): void {
+    if (this.recording) return;
+    this.committedBeforeTake = this.exportTracking();
+    this.recording = true;
+    this.capturing = true;
+  }
+
+  endTakeCapture(): void { this.capturing = false; }
+
+  finishTake(save: boolean): void {
+    if (!this.recording) return;
+    if (!save) {
+      this.session.reset();
+      if (this.committedBeforeTake) this.session.importTracking(this.committedBeforeTake);
+      this.mustCalibrate = true;
+      this.set({ usage: {}, cue: null }, true);
+    }
+    this.recording = false;
+    this.capturing = false;
+    this.committedBeforeTake = null;
   }
 
   /**
@@ -121,12 +150,12 @@ export class LiveTrackingStore {
 
   handlePose(e: PoseEvent): void {
     const music = this.music?.() ?? { position: 0, playing: false };
-    const musicT = frameMusicTime(music.position, e.ageMs, e.emitWallMs, this.wallNow());
+    const musicT = frameMusicTime(music.position, e.ageMs, e.emitWallMs, this.wallNow(), music.rate ?? 1);
     const pose = poseFromEvent(e);
     this.lastTMs = e.tMs;
     this.session.perf.captureFrom = e.captureFrom;
     if (!pose) this.pending.pose = null; // nobody in view: clear the skeleton
-    this.session.step(e.tMs, pose, e.aspect, { playing: music.playing, musicT }, { captureMs: e.latencyMs, sourceFrames: e.seq });
+    this.session.step(e.tMs, pose, e.aspect, { playing: music.playing && this.capturing, musicT }, { captureMs: e.latencyMs, sourceFrames: e.seq });
     this.set({ playing: music.playing, count: countInEight(this.plan, musicT), error: null }); // frames flowing: an earlier error is over
   }
 

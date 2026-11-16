@@ -57,3 +57,9 @@ cd ../../wear
 - 빌드·합성 음원 테스트까지 검증했으며 실제 Galaxy Watch 진동과 오디오 출력 지연은 실기기 검증이 필요합니다.
 
 공식 문서: [Wear OS Data Layer](https://developer.android.com/training/wearables/data/overview), [MessageClient RPC](https://developers.google.com/android/reference/com/google/android/gms/wearable/MessageClient), [진동 API](https://developer.android.com/develop/ui/views/haptics/haptics-apis).
+
+## 워치에서 믹서 조절
+
+폰에서 연습을 시작하면 워치 연결을 시도하고, 연결되면 워치에 레이어 이름과 볼륨이 나타납니다. 각 레이어의 슬라이더로 0~150%를 조절하거나 `−` / `+` 버튼으로 10%씩 조절할 수 있습니다. 폰은 워치의 조절 명령을 약 0.5초 간격으로 확인합니다. 각 레이어를 음소거하거나 솔로로 전환하고 전체 볼륨도 0~100%로 조절할 수 있습니다. 변경 사항은 폰의 믹서와 실제 재생에 반영됩니다.
+
+음소거, 솔로 및 전체 볼륨 조절에는 변경된 워치 APK와 이에 대응하는 최신 폰 앱 코드가 모두 필요합니다. 폰과 워치 앱은 같은 인증서로 서명되어야 하며, 두 앱을 열어 두어야 합니다. 실제 폰·워치 조합의 터치, 통신과 지연은 실기기 확인이 필요합니다.

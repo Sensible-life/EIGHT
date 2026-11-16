@@ -4,6 +4,7 @@ node_modules/
 /app/android/
 server/.venv/
 server/data/
+server/private_data/
 __pycache__/
 *.pyc
 .DS_Store
@@ -23,3 +24,7 @@ __pycache__/
 *.keystore
 *.jks
 credentials.json
+
+# Local demo and separated audio data
+/test-audio/
+/app/assets/audio/get-lucky-*.mp3

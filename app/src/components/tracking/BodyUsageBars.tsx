@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from '../../ui/Typography';
+import { StyleSheet, View } from 'react-native';
 import { SEGMENT_LABELS } from '../../tracking/phrases';
 import { SEGMENT_NAMES } from '../../tracking/segments';
 import type { Segment } from '../../tracking/types';
@@ -16,7 +17,7 @@ export default function BodyUsageBars({ segments, underused, dim = false }: Prop
           <View key={seg} style={s.row}>
             <Text style={s.label}>{SEGMENT_LABELS[seg]}</Text>
             <View style={[s.track, quiet && s.quietTrack]}><View style={[s.fill, { width: `${pct}%` }]} /></View>
-            <Text style={[s.value, quiet && s.quietValue]}>{quiet ? '안 가본 쪽' : `${pct}%`}</Text>
+            <Text style={[s.value, quiet && s.quietValue]}>{quiet ? "Low use" : `${pct}%`}</Text>
           </View>
         );
       })}
@@ -28,7 +29,7 @@ const s = StyleSheet.create({
   list: { gap: 8 },
   dim: { opacity: 0.45 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  label: { width: 52, color: C.sub, fontSize: 12 },
+  label: { width: 70, color: C.sub, fontSize: 12 },
   track: { flex: 1, height: 9, borderRadius: 5, backgroundColor: C.bg, overflow: 'hidden' },
   quietTrack: { borderWidth: 1, borderStyle: 'dashed', borderColor: C.accent, backgroundColor: 'transparent' },
   fill: { height: '100%', borderRadius: 5, backgroundColor: C.accent },

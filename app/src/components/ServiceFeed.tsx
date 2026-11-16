@@ -1,0 +1,32 @@
+import { Text, TextInput } from '../ui/Typography';
+import { displayMessage } from '../ui/displayMessage';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { useService } from '../service/ServiceProvider';
+import { C } from '../theme';
+import { confirmAction } from '../ui/confirm';
+import { Button, Card, Icon, ui } from '../ui/Kit';
+
+type Post = { id: string; authorId: string; author: string; text: string; likes: number; liked: boolean; mine: boolean; comments: { id: string; name: string; text: string }[] };
+type Block = { id: string; name: string };
+export default function ServiceFeed() {
+  const { account, request } = useService();
+  const [posts, setPosts] = useState<Post[]>([]), [blocks, setBlocks] = useState<Block[]>([]), [draft, setDraft] = useState(''), [comments, setComments] = useState<Record<string, string>>({}), [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
+  const [composing, setComposing] = useState(false), [expanded, setExpanded] = useState<string | null>(null);
+  const refresh = useCallback(async () => { const [p,b] = await Promise.all([request<Post[]>('/posts'), request<Block[]>('/blocks')]); setPosts(p); setBlocks(b); }, [request]);
+  useEffect(() => { if (!account) return; let alive = true; void Promise.resolve().then(refresh).catch(e => { if (alive) setMessage(displayMessage(e)); }); return () => { alive = false; }; }, [account, refresh]);
+  const run = async (action: () => Promise<unknown>, notice = '') => { setBusy(true); try { await action(); await refresh(); setMessage(notice); } catch (e) { setMessage(displayMessage(e)); } finally { setBusy(false); } };
+  return <View style={{ gap: 10 }}><View style={ui.between}><View><Text style={ui.h3}>Community</Text><Text style={ui.small}>{account ? `${account.name} · Public feed` : "Public feed"}</Text></View>{account && <Pressable accessibilityRole="button" accessibilityState={{ expanded: composing }} onPress={() => setComposing(!composing)} style={{ minHeight: 44, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 14, backgroundColor: C.cardHi }}><Text style={ui.link}>{composing ? "Close" : "＋ New post"}</Text></Pressable>}</View>
+    {!account ? <Card><Text style={ui.body}>Sign in to share posts and comments with others on the same server.</Text><Button title={"Account settings"} onPress={() => router.push('/settings')} secondary /></Card> : <>
+      {composing && <Card><Text style={ui.small}>This post will be visible to others on the server.</Text><TextInput accessibilityLabel={"Public post"} style={ui.input} multiline maxLength={1000} value={draft} onChangeText={setDraft} placeholder={"Write a post"} /><Button title={"Publish post"} disabled={busy || !draft.trim()} onPress={() => void run(async () => { await request('/posts','POST',{text:draft.trim()}); setDraft(''); setComposing(false); }, "Post published.")} /></Card>}
+      {posts.map(p => <Card key={p.id}><View style={ui.row}><View style={ui.iconCircle}><Icon name="person-outline" color={C.accent} size={20} /></View><Text style={[ui.h3, { flex: 1 }]}>{p.author}</Text><Pressable accessibilityRole="button" accessibilityLabel={`${p.author} post menu`} accessibilityState={{ expanded: expanded === p.id }} onPress={() => setExpanded(expanded === p.id ? null : p.id)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="ellipsis-horizontal" color={C.dim} /></Pressable></View><Text style={ui.body}>{p.text}</Text>
+        <View style={{ flexDirection: 'row', gap: 14 }}><Pressable accessibilityRole="button" accessibilityState={{ selected: p.liked }} disabled={busy} onPress={() => void run(() => request(`/posts/${p.id}/like`, p.liked ? 'DELETE' : 'PUT'))} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5 }}><Icon name={p.liked ? 'heart' : 'heart-outline'} color={p.liked ? C.accent : C.sub} size={18} /><Text style={ui.small}>{p.likes}</Text></Pressable><Pressable accessibilityRole="button" accessibilityState={{ expanded: expanded === p.id }} onPress={() => setExpanded(expanded === p.id ? null : p.id)} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5 }}><Icon name="chatbubble-outline" color={C.sub} size={17} /><Text style={ui.small}>Comments {p.comments.length}</Text></Pressable></View>
+        {expanded === p.id && <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10 }}>{p.comments.map(c => <Text key={c.id} style={ui.small}>{c.name} · {c.text}</Text>)}<View style={{ flexDirection: 'row', gap: 8 }}><TextInput accessibilityLabel={`${p.author} comment`} style={[ui.input, { flex: 1 }]} maxLength={300} value={comments[p.id] ?? ''} onChangeText={value => setComments(x => ({ ...x, [p.id]: value }))} placeholder={"Comments"} /><Button title={"Post"} secondary disabled={busy || !comments[p.id]?.trim()} onPress={() => void run(async () => { await request(`/posts/${p.id}/comments`,'POST',{text:comments[p.id].trim()}); setComments(x => ({ ...x, [p.id]: '' })); })} /></View>
+          {p.mine ? <Button title={"Delete my post"} secondary disabled={busy} onPress={() => confirmAction("Delete post", "Delete this post?", () => void run(() => request(`/posts/${p.id}`,'DELETE'), "Post deleted."))} /> : <View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Button title={"Report"} secondary disabled={busy} onPress={() => void run(() => request(`/posts/${p.id}/report`,'POST',{text:"Inappropriate content"}), "Report submitted.")} /></View><View style={{ flex: 1 }}><Button title={"Block"} secondary disabled={busy} onPress={() => void run(() => request(`/blocks/${p.authorId}`,'PUT'), "User blocked.")} /></View></View>}</View>}
+      </Card>)}
+      {blocks.map(b => <Card key={b.id}><View style={ui.between}><Text style={ui.body}>{b.name} Blocked</Text><Button title={"Unblock"} secondary disabled={busy} onPress={() => void run(() => request(`/blocks/${b.id}`,'DELETE'))} /></View></Card>)}
+      {!posts.length && <Card><Text style={ui.body}>No posts yet.</Text></Card>}
+      <Pressable accessibilityRole="button" onPress={() => void run(refresh)} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={ui.link}>Refresh</Text></Pressable>
+    </>}{!!message && <Text accessibilityLiveRegion="polite" style={ui.body}>{message}</Text>}</View>;
+}

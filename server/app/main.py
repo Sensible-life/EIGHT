@@ -7,6 +7,7 @@ GET  /jobs/{id}/analysis   분석 JSON
 GET  /files/{id}/{stem}.mp3  stem 오디오
 """
 from __future__ import annotations
+from .mock_explore import router as mock_explore_router
 
 import json
 import logging
@@ -25,6 +26,9 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .projection import router as projection_router
+from .service import router as service_router
+from .choreography import router as choreography_router
 from .analysis import analyze
 from .audio_io import load_audio, write_mp3
 from .separation import SeparationConfig, make_separator, pick_device
@@ -37,6 +41,10 @@ DATA = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent.parent / 
 DATA.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Choreo Music Analysis")
+app.include_router(projection_router)
+app.include_router(service_router)
+app.include_router(mock_explore_router)
+app.include_router(choreography_router)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/files", StaticFiles(directory=DATA), name="files")
 

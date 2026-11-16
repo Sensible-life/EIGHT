@@ -1,5 +1,9 @@
 export const C = {
   bg: '#F6F4F7',
+  missionBg: '#1B1521',
+  missionSurface: '#2C2332',
+  missionNavMuted: '#C1B5C7',
+  missionNavActive: '#F28BEF',
   card: '#FFFFFF',
   cardHi: '#F5EAF7',
   line: '#EBE5ED',
@@ -29,20 +33,20 @@ export const STEM_COLORS: Record<string, string> = {
 };
 
 export const STEM_LABELS: Record<string, string> = {
-  vocals: '보컬',
-  instrumental: '반주',
-  drums: '드럼',
-  bass: '베이스',
-  other: '나머지 악기',
-  guitar: '기타(Guitar)',
-  electric_guitar: '일렉 기타',
-  acoustic_guitar: '어쿠스틱 기타',
-  synthesizer: '신디사이저',
-  strings: '현악기',
-  wind: '관악기',
-  lead_vocals: '리드 보컬',
-  backing_vocals: '코러스',
-  piano: '피아노',
+  vocals: "Vocals",
+  instrumental: "Accompaniment",
+  drums: "Drums",
+  bass: "Bass",
+  other: "Other",
+  guitar: "Guitar",
+  electric_guitar: "Electric guitar",
+  acoustic_guitar: "Acoustic guitar",
+  synthesizer: "Synthesizer",
+  strings: "Strings",
+  wind: "Winds",
+  lead_vocals: "Lead vocals",
+  backing_vocals: "Backing vocals",
+  piano: "Piano",
 };
 
 export const SECTION_COLORS = ['#3B3B8F', '#8F3B6B', '#2F7A6B', '#8F6A2F', '#5A3B8F', '#2F5E8F', '#7A2F2F'];

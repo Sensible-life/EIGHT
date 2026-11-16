@@ -5,14 +5,14 @@ export type Frame = { t: number; joints: Record<Joint, Point> };
 export type Trace = { version: 1; source: 'sample' | 'imported'; frames: Frame[] };
 export type MotionResult = { source: Trace['source']; duration: number; body: Record<Joint, number>; space: number[]; peaks: number[]; repeats: number; period: number | null; beatMatch: number | null; bpm: number; offset: number; coverage: number };
 export function parseTrace(text: string): Trace {
-  if (text.length > 12_000_000) throw new Error('좌표 파일은 12MB 이하로 준비해 주세요.');
+  if (text.length > 12_000_000) throw new Error("The pose data file must be 12 MB or smaller.");
   const x = JSON.parse(text);
-  if (!x || x.version !== 1 || !Array.isArray(x.frames) || x.frames.length < 3 || x.frames.length > 36000) throw new Error('version:1과 3~36000개의 frames가 필요해요.');
+  if (!x || x.version !== 1 || !Array.isArray(x.frames) || x.frames.length < 3 || x.frames.length > 36000) throw new Error("Requires version: 1 and 3–36,000 frames.");
   let previous = -1;
   for (const f of x.frames) {
-    if (!f || !Number.isFinite(f.t) || f.t < 0 || f.t <= previous || f.t > 3600) throw new Error('t는 0~3600초 사이의 오름차순이어야 해요.');
+    if (!f || !Number.isFinite(f.t) || f.t < 0 || f.t <= previous || f.t > 3600) throw new Error("Timestamps must be ascending and between 0 and 3,600 seconds.");
     previous = f.t;
-    for (const joint of JOINTS) { const p = f.joints?.[joint]; if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1 || (p.confidence !== undefined && (!Number.isFinite(p.confidence) || p.confidence < 0 || p.confidence > 1))) throw new Error(`${joint}: 정규화한 x/y(0~1)와 confidence(0~1)를 확인해 주세요.`); }
+    for (const joint of JOINTS) { const p = f.joints?.[joint]; if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1 || (p.confidence !== undefined && (!Number.isFinite(p.confidence) || p.confidence < 0 || p.confidence > 1))) throw new Error(`${joint}: check normalized x/y (0–1) and confidence (0–1).`); }
   }
   return { version: 1, source: 'imported', frames: x.frames };
 }
@@ -20,7 +20,7 @@ export function sampleTrace(kind: 'balanced' | 'arms' | 'travel' = 'balanced'): 
   return { version: 1, source: 'sample', frames: Array.from({ length: 601 }, (_, i) => { const t = i / 30, phase = Math.sin(t * Math.PI * 2), drift = kind === 'travel' ? Math.sin(t * .5) * .28 : Math.sin(t * .4) * .04; return { t, joints: { hip: { x: .5 + drift, y: .51 + (kind === 'travel' ? Math.sin(t * .9) * .2 : .02 * phase) }, leftWrist: { x: .3 + drift, y: .36 + phase * .13 }, rightWrist: { x: .7 + drift, y: .36 - phase * .13 }, leftAnkle: { x: .4 + drift, y: .8 + phase * (kind === 'arms' ? .004 : .05) }, rightAnkle: { x: .6 + drift, y: .8 - phase * (kind === 'arms' ? .004 : .05) } } }; }) };
 }
 export function analyzeTrace(trace: Trace, bpm = 120, offset = 0): MotionResult {
-  if (!Number.isFinite(bpm) || bpm < 30 || bpm > 300 || !Number.isFinite(offset) || Math.abs(offset) > 10) throw new Error('BPM은 30~300, 영상 시간 보정은 ±10초 범위예요.');
+  if (!Number.isFinite(bpm) || bpm < 30 || bpm > 300 || !Number.isFinite(offset) || Math.abs(offset) > 10) throw new Error("BPM must be 30–300 and the video offset within ±10 seconds.");
   const frames = trace.frames, totals = Object.fromEntries(JOINTS.map(j => [j, 0])) as Record<Joint, number>, space = Array(9).fill(0) as number[];
   const speeds: { t: number; value: number }[] = []; let valid = 0;
   for (let i = 1; i < frames.length; i++) {

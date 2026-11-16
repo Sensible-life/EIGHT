@@ -7,6 +7,7 @@ const { S, standingImage, worldFromImage, rng, jitter, close } = require('./help
 
 close(frameMusicTime(10, 50, 1000, 1030), 9.92);
 close(frameMusicTime(10, 50, 1000, 990), 9.95, 1e-9, 'a wall clock behind the event adds no delay');
+close(frameMusicTime(10, 50, 1000, 1030, 0.5), 9.96);
 
 /** A pose-camera event for a pose image (33 x [x, y, z]) or nobody (null). */
 const event = (tMs, img, wallMs) => ({
@@ -43,6 +44,7 @@ function harness({ playing = true, stepMs = 66 } = {}) {
 {
   // the 8count window follows the song's eights
   const h = harness();
+  h.store.beginTake();
   h.store.setPlan(planFor([{ index: 0, start: 0, end: 4 }, { index: 1, start: 4, end: 8 }], null, 4));
   for (let i = 0; i < 80; i++) h.send(); // 5.3 s
   assert.equal(h.store.trackerState, 'tracking');
@@ -51,7 +53,32 @@ function harness({ playing = true, stepMs = 66 } = {}) {
   assert.equal(v.plan, 'eights');
   assert.ok(v.count >= 2 && v.count <= 3, `count ${v.count}`);
   assert.ok(v.usage['8count'] && v.status.state === 'tracking');
+  assert.equal(h.store.exportTracking(), null, 'an unfinished take is not persisted');
+  h.store.endTakeCapture();
+  h.store.finishTake(true);
   assert.ok(h.store.exportTracking().totals.frames > 0);
+}
+{
+  const h = harness();
+  for (let i = 0; i < 80; i++) h.send(h.arms(i));
+  assert.equal(h.store.exportTracking(), null, 'playing without recording must not accumulate');
+  h.store.beginTake();
+  for (let i = 0; i < 80; i++) h.send(h.arms(i));
+  assert.equal(h.store.exportTracking(), null, 'draft is hidden from checkpoints');
+  h.store.endTakeCapture();
+  h.store.finishTake(false);
+  assert.equal(h.store.exportTracking(), null, 'discard leaves no analysis');
+  h.store.beginTake();
+  for (let i = 0; i < 100; i++) h.send(h.arms(i));
+  h.store.endTakeCapture();
+  h.store.finishTake(true);
+  const saved = h.store.exportTracking();
+  assert.ok(saved && saved.totals.frames > 0, 'saved take commits analysis');
+  h.store.beginTake();
+  for (let i = 0; i < 60; i++) h.send(h.arms(i));
+  h.store.endTakeCapture();
+  h.store.finishTake(false);
+  assert.deepEqual(h.store.exportTracking(), saved, 'discard preserves previous saved takes');
 }
 {
   // paused the whole time: tracks the dancer but saves nothing
@@ -78,6 +105,7 @@ function harness({ playing = true, stepMs = 66 } = {}) {
 {
   // a suggestion shows for cue_show_s, then clears (before the next one may come)
   const h = harness({ stepMs: 100 });
+  h.store.beginTake();
   let i = 0;
   while (!h.store.getView().cue && i < 100) h.send(h.arms(i++));
   assert.ok(h.store.getView().cue, 'arms-only dancing gets a suggestion');

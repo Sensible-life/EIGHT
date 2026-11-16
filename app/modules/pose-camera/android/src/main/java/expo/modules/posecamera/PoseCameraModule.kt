@@ -7,7 +7,9 @@ class PoseCameraModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("PoseCamera")
         View(PoseCameraView::class) {
-            Events("onPose", "onEngine", "onError")
+            Events("onPose", "onEngine", "onError", "onRecording")
+            AsyncFunction("startRecording") { view: PoseCameraView -> view.startRecording() }
+            AsyncFunction("stopRecording") { view: PoseCameraView -> view.stopRecording() }
             Prop("active") { view: PoseCameraView, active: Boolean -> view.setActive(active) }
             Prop("model") { view: PoseCameraView, model: String -> view.model = model }
             Prop("detectorJson") { view: PoseCameraView, json: String -> view.detectorJson = json }

@@ -1,0 +1,13 @@
+import { Text, TextInput } from '../ui/Typography';
+import { displayMessage } from '../ui/displayMessage';
+import { useState } from 'react';
+
+import { useService } from '../service/ServiceProvider';
+import { Button, Card, ui } from '../ui/Kit';
+export default function AccountCard({ embedded = false }: { embedded?: boolean }) {
+  const service = useService(), [name, setName] = useState(''), [password, setPassword] = useState(''), [status, setStatus] = useState(''), [busy, setBusy] = useState(false);
+  const run = async (action: () => Promise<void>, message: string) => { setBusy(true); try { await action(); setStatus(message); } catch (e) { setStatus(displayMessage(e)); } finally { setBusy(false); } };
+  return <Card style={embedded ? { padding: 0, borderRadius: 0 } : undefined}>{!embedded && <Text style={ui.h3}>Account and sync</Text>}<Text style={ui.body}>Use your server account to access records across devices.</Text>
+    {!service.account ? <><TextInput accessibilityLabel={"Username"} style={ui.input} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} placeholder={"Lowercase letters, numbers, and underscores"} /><TextInput accessibilityLabel={"Password"} style={ui.input} value={password} onChangeText={setPassword} secureTextEntry placeholder={"At least 8 characters"} /><Button title={"Sign in"} disabled={busy || name.length < 3 || password.length < 8} onPress={() => void run(async () => { await service.authenticate('login', name, password); setPassword(''); }, "Signed in. Download your records.")} /><Button title={"Create account"} secondary disabled={busy || name.length < 3 || password.length < 8} onPress={() => void run(async () => { await service.authenticate('register', name, password); setPassword(''); }, "Account created. Download your records.")} /></> : <><Text style={ui.body}>{service.account.name}  signed in</Text><Button title={"Download and merge server records"} secondary disabled={busy} onPress={() => void run(service.download, "Server records merged with this device.")} /><Button title={"Save records and videos to server"} disabled={busy || service.revision === null} onPress={() => void run(service.upload, "Records saved to server.")} /><Button title={"Sign out"} secondary disabled={busy} onPress={() => void run(service.logout, "Signed out.")} /><Text style={ui.small}>Download before saving to avoid conflicts. Recorded videos are stored on the server. Imported music must be reconnected on other devices.</Text></>}
+    <Text style={ui.small}>This uses a development server. Sign in again when reopening the app. HTTPS and server administration are required before production.</Text>{!!status && <Text accessibilityLiveRegion="polite" style={ui.body}>{status}</Text>}</Card>;
+}

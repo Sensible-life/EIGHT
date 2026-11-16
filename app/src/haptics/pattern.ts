@@ -1,6 +1,14 @@
 export type Pulse = { t: number; strength: number };
 export type HapticSource = 'bass' | 'kick' | 'both';
 
+/** Express media time in wall-clock units for older watch apps that schedule at 1×. */
+export function patternAtRate(pulses: Pulse[], duration: number, rate: number) {
+  return { pulses: pulses.map(p => ({ ...p, t: p.t / rate })), duration: duration / rate };
+}
+export function transportAtRate<T extends { positionMs: number; loop: { startMs: number; endMs: number } | null }>(state: T, rate: number): T {
+  return { ...state, positionMs: state.positionMs / rate, loop: state.loop ? { startMs: state.loop.startMs / rate, endMs: state.loop.endMs / rate } : null };
+}
+
 /** Low-band attack detector. Kick is an estimate from drums, not a separated kick stem. */
 export function detectPulses(samples: Float32Array, sampleRate: number, kind: 'bass' | 'kick'): Pulse[] {
   if (!samples.length || sampleRate <= 0) return [];
@@ -59,6 +67,6 @@ export function selectPulses(bass: Pulse[], kick: Pulse[], source: HapticSource,
 
 export function encodePattern(pulses: Pulse[], duration: number): string {
   const pattern = JSON.stringify({ version: 1, durationMs: Math.round(duration * 1000), pulses: pulses.map(p => [Math.round(p.t * 1000), Math.round(p.strength * 255)]) });
-  if (pattern.length > 80000) throw new Error('진동 패턴이 너무 길어요. 민감도를 낮춰 주세요.');
+  if (pattern.length > 80000) throw new Error("The vibration pattern is too long. Reduce sensitivity.");
   return pattern;
 }

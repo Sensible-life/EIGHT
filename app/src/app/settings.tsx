@@ -1,16 +1,44 @@
+import { Text, TextInput } from '../ui/Typography';
+import { displayMessage } from '../ui/displayMessage';
+import AccountCard from '../components/AccountCard';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import PoseCameraView from '../../modules/pose-camera';
+import WatchNative from '../../modules/watch-haptics';
 import { exportBackup } from '../storage/backup';
 import { mediaUsage, readTextFile } from '../storage/media';
-import { useState } from 'react';
-import { Text, TextInput } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { AppState, Linking, View } from 'react-native';
 import { api } from '../api';
 import { useLibrary } from '../state/LibraryProvider';
+import { useDevice } from '../state/DeviceProvider';
 import { C } from '../theme';
-import { Button, Card, Heading, Page, ui } from '../ui/Kit';
+import { Button, Page, ui } from '../ui/Kit';
+import { SectionTitle, SettingsItem } from '../ui/ScreenParts';
 export default function Settings() {
   const { data, setServer, restore } = useLibrary(); const [draft, setDraft] = useState(data.server), [status, setStatus] = useState(''), [busy, setBusy] = useState(false);
-  const save = async () => { const url = draft.trim().replace(/\/$/, ''); if (!/^https?:\/\/[^\s]+$/.test(url)) { setStatus('http:// 또는 https://로 시작하는 서버 주소를 입력해 주세요.'); return; } setServer(url); setBusy(true); try { const health = await api.health(url); setStatus(health.providers?.lalal?.ready ? '서버 연결 완료 · LALAL.AI 사용 가능' : '서버 연결 완료 · LALAL.AI API 키 설정 필요'); } catch { setStatus('주소는 저장했어요. 서버 실행과 같은 Wi-Fi 연결을 확인해 주세요.'); } finally { setBusy(false); } };
-  const backup = async () => { try { await exportBackup(data); setStatus('백업 내보내기를 요청했어요. 다운로드 또는 공유된 파일을 확인해 주세요. 음원·영상은 포함되지 않습니다.'); } catch (e) { setStatus(String(e)); } };
-  const importBackup = async () => { try { const r = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain'], copyToCacheDirectory: true }); if (r.canceled) return; restore(await readTextFile(r.assets[0].uri)); setStatus('기존 기록을 보존하면서 백업 기록을 병합했어요.'); } catch (e) { setStatus(String(e)); } };
-  return <Page><Heading title="연결 설정" caption="MAKE IT YOURS" /><Card><Text style={ui.h3}>음원 분리 서버</Text><Text style={ui.body}>맥에서 실행 중인 서버 주소를 입력해 주세요.</Text><TextInput accessibilityLabel="서버 주소" value={draft} onChangeText={setDraft} placeholder="http://192.168.0.10:8000" placeholderTextColor={C.dim} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={ui.input} /><Button title={busy ? '확인 중…' : '저장하고 연결 확인'} onPress={save} disabled={busy} />{!!status && <Text accessibilityLiveRegion="polite" style={ui.body}>{status}</Text>}</Card><Card><Text style={ui.h3}>기록 백업 · 저장 공간</Text><Button title="기록 JSON 내보내기" onPress={() => void backup()} secondary /><Button title="기록 JSON 가져오기 · 병합" onPress={() => void importBackup()} secondary /><Button title="저장 공간 확인" secondary onPress={() => void mediaUsage().then(bytes => setStatus(`보관한 음악·영상 ${(bytes / 1024 / 1024).toFixed(1)} MB · 프로젝트 ${data.projects.length}개. 프로젝트에서 다운로드 해제 또는 삭제할 수 있어요.`)).catch(e => setStatus(String(e)))} /><Text style={ui.small}>백업은 기록·좌표·설정만 포함해요. 다른 기기에서는 음악 파일을 프로젝트에서 다시 연결해 주세요. 복원 시 워치 설정과 미션 목표는 백업 값으로 바뀝니다.</Text>{!!status && <Text style={ui.body}>{status}</Text>}</Card><Card><Text style={ui.h3}>내 기록은 내 기기에</Text><Text style={ui.body}>프로젝트, 세션, 믹서 설정과 미션 기록은 이 기기에 저장해요. 프로젝트에서 오프라인 보관하면 서버 연결 없이 재생할 수 있어요.</Text><Text style={ui.small}>웹 파일은 IndexedDB, 휴대폰 파일은 앱 문서 폴더에 보관해요. 브라우저 데이터를 삭제하면 파일도 사라집니다.</Text></Card></Page>;
+  const { connected, connecting, status: watchStatus, ensureWatch, reportWatchError } = useDevice();
+  const [camera, setCamera] = useState<{ granted: boolean; canAskAgain: boolean } | null>(null);
+  const checkCamera = useCallback(async () => { if (!PoseCameraView) return; try { const result = await ImagePicker.getCameraPermissionsAsync(); setCamera({ granted: result.granted, canAskAgain: result.canAskAgain }); } catch (error) { setStatus(displayMessage(error)); } }, []);
+  useEffect(() => { void Promise.resolve().then(checkCamera); const sub = AppState.addEventListener('change', state => { if (state === 'active') void checkCamera(); }); return () => sub.remove(); }, [checkCamera]);
+  const allowCamera = async () => { try { if (camera && !camera.canAskAgain) { await Linking.openSettings(); return; } const result = await ImagePicker.requestCameraPermissionsAsync(); setCamera({ granted: result.granted, canAskAgain: result.canAskAgain }); } catch (error) { setStatus(displayMessage(error)); } };
+  const save = async () => { const url = draft.trim().replace(/\/$/, ''); if (!/^https?:\/\/[^\s]+$/.test(url)) { setStatus("Enter a server address starting with http:// or https://."); return; } setServer(url); setBusy(true); try { const health = await api.health(url); setStatus(health.providers?.lalal?.ready ? "Server connected · LALAL.AI available" : "Server connected · LALAL.AI API key required"); } catch { setStatus("Address saved. Check that the server is running and both devices share a Wi-Fi network."); } finally { setBusy(false); } };
+  const backup = async () => { try { await exportBackup(data); setStatus("Backup export requested. Check the downloaded or shared file. Music and videos are not included."); } catch (e) { setStatus(displayMessage(e)); } };
+  const importBackup = async () => { try { const r = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain'], copyToCacheDirectory: true }); if (r.canceled) return; restore(await readTextFile(r.assets[0].uri)); setStatus("Backup merged with existing records."); } catch (e) { setStatus(displayMessage(e)); } };
+  return <Page>
+    <SectionTitle title="Your devices" detail="Connections and permissions" />
+    <SettingsItem title="Devices" detail="Watch · camera · audio" icon="hardware-chip-outline">
+      <Text style={ui.h3}>Galaxy Watch</Text><Text style={ui.body}>{WatchNative ? watchStatus : 'Watch connection is available in the Android app.'}</Text>
+      {!!WatchNative && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><View style={{ flexGrow: 1 }}><Button title={connecting ? 'Connecting…' : connected ? 'Connected ✓' : 'Connect watch'} disabled={connecting || connected} secondary onPress={() => void ensureWatch()} /></View>{connected && <View style={{ flexGrow: 1 }}><Button title="Test vibration" secondary onPress={() => void WatchNative?.test().catch(reportWatchError)} /></View>}</View>}
+      <View style={ui.line} /><Text style={ui.h3}>Camera</Text><Text style={ui.body}>{!PoseCameraView ? 'Motion camera is available in the Android app.' : camera?.granted ? 'Camera access is enabled.' : 'Allow camera access for motion tracking and recording.'}</Text>
+      {!!PoseCameraView && !camera?.granted && <Button title={camera && !camera.canAskAgain ? 'Open system settings' : 'Allow camera access'} secondary onPress={() => void allowCamera()} />}
+      <View style={ui.line} /><Text style={ui.h3}>Audio output</Text><Text style={ui.body}>Connect an amplifier by audio cable or Bluetooth.</Text>
+    </SettingsItem>
+    <SectionTitle title="App settings" />
+    <SettingsItem title={"Account and sync"} detail={"Sign in · Save records to server"} icon="person-circle-outline"><AccountCard embedded /></SettingsItem>
+    <SettingsItem title={"Audio separation server"} detail={"Address and connection status"} icon="cloud-outline"><Text style={ui.body}>Enter the address of the server running on your Mac.</Text><TextInput accessibilityLabel={"Server address"} value={draft} onChangeText={setDraft} placeholder="http://192.168.0.10:8000" placeholderTextColor={C.dim} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={ui.input} /><Button title={busy ? "Checking…" : "Save and check connection"} onPress={save} disabled={busy} /></SettingsItem>
+    <SettingsItem title={"Backup"} detail={"Export or import JSON"} icon="archive-outline"><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><View style={{ flexGrow: 1 }}><Button title={"Export"} onPress={() => void backup()} secondary /></View><View style={{ flexGrow: 1 }}><Button title={"Import and merge"} onPress={() => void importBackup()} secondary /></View></View><Text style={ui.small}>Includes records and settings only; music and video files are excluded.</Text></SettingsItem>
+    <SettingsItem title={"Storage"} detail={"Music and videos saved on this device"} icon="folder-outline"><Button title={"Check storage"} secondary onPress={() => void mediaUsage().then(bytes => setStatus(`Stored music and video: ${(bytes / 1024 / 1024).toFixed(1)} MB · projects: ${data.projects.length}`)).catch(e => setStatus(displayMessage(e)))} /><Text style={ui.small}>Remove downloads or delete files from a project.</Text></SettingsItem>
+    {!!status && <Text accessibilityLiveRegion="polite" style={ui.body}>{status}</Text>}
+  </Page>;
 }

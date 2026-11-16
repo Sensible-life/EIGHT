@@ -1,3 +1,4 @@
+import { displayMessage } from './ui/displayMessage';
 import { File as LocalFile } from 'expo-file-system';
 import { fetch as uploadFetch } from 'expo/fetch';
 
@@ -61,7 +62,12 @@ export interface UploadOptions { model: string; shifts: number; overlap?: number
 const clean = (base: string) => base.trim().replace(/\/+$/, '');
 
 async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const text = await res.text();
+    let detail = text;
+    try { const parsed = JSON.parse(text); if (typeof parsed.detail === 'string') detail = parsed.detail; } catch { /* response is not JSON */ }
+    throw new Error(`${res.status} ${displayMessage(detail)}`);
+  }
   return res.json() as Promise<T>;
 }
 

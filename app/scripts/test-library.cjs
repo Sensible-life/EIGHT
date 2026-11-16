@@ -43,3 +43,48 @@ assert.equal(decodeLibrary(withSession(trackedSession), empty).sessions[0].track
 assert.deepEqual(JSON.parse(JSON.stringify(decodeLibrary(withSession({ ...trackedSession, tracking: savedTracking }), empty).sessions[0].tracking)), savedTracking);
 assert.throws(() => decodeLibrary(withSession({ ...trackedSession, tracking: { ...savedTracking, totals: { ...savedTracking.totals, observed: perSegment(601) } } }), empty));
 console.log('PASS: session tracking totals load, round-trip and reject broken values');
+
+const motif = { id: 'm1', projectId: 'p1', sessionId: 's1', name: '여덟 박', createdAt: 1, start: 0, end: 4, eightIndex: null, body: perSegment(1 / 6), level: { low: 0, mid: 1, high: 0 } };
+const composition = { id: 'c1', projectId: 'p1', name: '연습', motifIds: ['m1', 'm1'], createdAt: 1 };
+const stored = { ...empty, projects: [trackedProject], sessions: [trackedSession], extras: { motifs: [motif], compositions: [composition] } };
+assert.equal(decodeLibrary(JSON.stringify(stored), empty).extras.compositions[0].motifIds.length, 2);
+assert.throws(() => decodeLibrary(JSON.stringify({ ...stored, extras: { ...stored.extras, motifs: [{ ...motif, end: 0 }] } }), empty));
+assert.throws(() => decodeLibrary(JSON.stringify({ ...stored, extras: { ...stored.extras, compositions: [{ ...composition, motifIds: ['missing'] }] } }), empty));
+console.log('PASS: motifs and compositions round-trip; invalid ranges and references are rejected');
+const videoMotif = { ...motif, video: 'file:///app/media/video.mp4', videoOffset: 1.25 };
+assert.equal(decodeLibrary(JSON.stringify({ ...stored, extras: { ...stored.extras, motifs: [videoMotif] } }), empty).extras.motifs[0].video, videoMotif.video);
+assert.equal(decodeLibrary(JSON.stringify({ ...stored, extras: { ...stored.extras, motifs: [videoMotif] } }), empty).extras.motifs[0].videoOffset, 1.25);
+assert.throws(() => decodeLibrary(JSON.stringify({ ...stored, extras: { ...stored.extras, motifs: [{ ...videoMotif, video: 123 }] } }), empty));
+assert.throws(() => decodeLibrary(JSON.stringify({ ...stored, extras: { ...stored.extras, motifs: [{ ...videoMotif, videoOffset: -1 }] } }), empty));
+console.log('PASS: recorded-video metadata round-trip and validation');
+
+const { placeClip, resizeClip, clipAt } = require('./load-ts.cjs')('src/editor/timeline.ts');
+const firstClip = { id: 'v1', motifId: 'm1', start: 1, sourceStart: 0, duration: 2 };
+const secondClip = { id: 'v2', motifId: 'm1', start: 4, sourceStart: 0, duration: 2 };
+assert.equal(placeClip([firstClip], secondClip, 2, 10).start, 3, 'dragging near another clip snaps to a free position');
+assert.equal(placeClip([firstClip], secondClip, 9, 10).start, 8, 'clips stay inside the music');
+assert.equal(resizeClip([firstClip, secondClip], firstClip, 5, 8, 10).duration, 3, 'trimming cannot overlap the next clip');
+assert.equal(clipAt([firstClip, secondClip], 4.5).id, 'v2');
+assert.equal(clipAt([firstClip, secondClip], 3.5), undefined, 'gaps contain no video');
+const timeline = { id: 'draft1', projectId: 'p1', name: 'Draft', updatedAt: 1, clips: [firstClip, secondClip] };
+const finished = { id: 'f1', projectId: 'p1', name: 'Final', createdAt: 1, clips: [firstClip], video: 'file:///app/media/final.mp4' };
+const withTimeline = { ...stored, extras: { ...stored.extras, motifs: [videoMotif], timelines: [timeline], finished: [finished] } };
+assert.equal(decodeLibrary(JSON.stringify(withTimeline), empty).extras.finished[0].video, finished.video);
+assert.equal(decodeLibrary(JSON.stringify(withTimeline), empty).extras.timelines[0].clips.length, 2);
+assert.throws(() => decodeLibrary(JSON.stringify({ ...withTimeline, extras: { ...withTimeline.extras, timelines: [{ ...timeline, clips: [firstClip, { ...secondClip, start: 2 }] }] } }), empty), 'overlaps are rejected');
+assert.throws(() => decodeLibrary(JSON.stringify({ ...withTimeline, extras: { ...withTimeline.extras, finished: [{ ...finished, video: 123 }] } }), empty), 'finished media must be a file path');
+console.log('PASS: timeline positioning, trimming, persistence and completed MP4 validation');
+
+const { focusSummary, selectSessions } = require('./load-ts.cjs')('src/analysis/summary.ts');
+const focusTimeline = { ...timeline, clips: [{ ...firstClip, focusLayers: ['drums', 'bass'] }, secondClip] };
+const summary = focusSummary([focusTimeline], 'p1');
+assert.equal(summary.totalClips, 2);
+assert.equal(summary.taggedClips, 1);
+assert.equal(summary.layers.find(layer => layer.stem === 'drums').clips, 1);
+assert.equal(summary.layers.find(layer => layer.stem === 'bass').seconds, 2);
+assert.equal(focusSummary([focusTimeline], 'different').totalClips, 0);
+assert.deepEqual(Array.from(selectSessions([{ id: 'old', projectId: 'p1', startedAt: 5 }, { id: 'new', projectId: 'p1', startedAt: 15 }, { id: 'other', projectId: 'p2', startedAt: 20 }], 'p1', 10), item => item.id), ['new']);
+const taggedStored = { ...withTimeline, extras: { ...withTimeline.extras, timelines: [focusTimeline] } };
+assert.equal(decodeLibrary(JSON.stringify(taggedStored), empty).extras.timelines[0].clips[0].focusLayers[0], 'drums');
+assert.throws(() => decodeLibrary(JSON.stringify({ ...taggedStored, extras: { ...taggedStored.extras, timelines: [{ ...focusTimeline, clips: [{ ...firstClip, focusLayers: ['bass', 'bass'] }] }] } }), empty));
+console.log('PASS: project and period filtering, explicit focus-layer counts and persistence');

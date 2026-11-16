@@ -7,5 +7,6 @@ export interface WatchHapticsNative {
   sync(state: string): Promise<void>;
   stop(): Promise<void>;
   test(): Promise<void>;
+  mixer(state: string): Promise<string>;
 }
 export default Platform.OS === 'android' ? requireOptionalNativeModule<WatchHapticsNative>('WatchHaptics') : null;

@@ -1,5 +1,6 @@
+import { Text } from '../ui/Typography';
 import { memo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Analysis, lastIndexAtOrBefore } from '../api';
 import { C, sectionColor } from '../theme';
 
@@ -50,7 +51,7 @@ export default memo(Timeline);
 const s = StyleSheet.create({
   track: { height: 44, backgroundColor: C.card, borderRadius: 8, overflow: 'hidden' },
   section: { position: 'absolute', top: 0, bottom: 0, borderRightWidth: 1, borderColor: C.bg, justifyContent: 'center', paddingLeft: 4 },
-  sectionLabel: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  sectionLabel: { color: '#fff', fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 12 },
   tick: { position: 'absolute', bottom: 0, width: 1, height: 8, backgroundColor: 'rgba(255,255,255,0.35)' },
   loop: { position: 'absolute', top: 0, bottom: 0, backgroundColor: 'rgba(217,242,139,0.15)', borderColor: C.accent, borderWidth: 1 },
   head: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: '#fff' },

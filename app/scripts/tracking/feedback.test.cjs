@@ -63,7 +63,7 @@ assert.deepEqual(run(eng(), t => {
   const texts = run(eng(), legLQuiet, 70).map(([, c]) => c.text);
   assert.equal(texts.length, 2);
   assert.notEqual(texts[0], texts[1], 'texts rotate');
-  assert.ok(texts.every(s => s.includes('왼다리')));
+  assert.ok(texts.every(s => s.includes('Left leg')));
 }
 {
   const e = eng();

@@ -34,6 +34,7 @@ class LocalFile {
 }
 const posts = [];
 const imports = {
+  './ui/displayMessage': load('src/ui/displayMessage.ts', {}),
   'expo-file-system': { File: LocalFile },
   'expo/fetch': { fetch: async (url, options) => {
     // Exercise the exact SDK converter that emitted the user's error.
@@ -44,6 +45,9 @@ const imports = {
 };
 const { api } = load('src/api.ts', imports, { FormData, Blob: NativeBlob });
 (async () => {
+  assert.equal(imports['./ui/displayMessage'].displayMessage('로그인이 필요해요.'), 'Please sign in.');
+  assert.equal(imports['./ui/displayMessage'].displayMessage('Unknown native failure'), 'Unknown native failure');
+  assert.equal(imports['./ui/displayMessage'].displayMessage('알 수 없는 오류'), 'An error occurred. Check the connection and try again.');
   assert.throws(() => new NativeBlob([audioBytes]), /ArrayBufferView/, 'reproduce the second native Blob error');
   const legacy = new FormData();
   legacy.append('file', {uri: 'file:///cache/song.mp3', name: 'song.mp3', type: 'audio/mpeg'});
@@ -75,5 +79,27 @@ const { api } = load('src/api.ts', imports, { FormData, Blob: NativeBlob });
   await browserApi.upload('http://server', {uri: 'blob:browser', name: 'browser.mp3', file: browserFile}, {model: 'auto', shifts: 1});
   assert.equal(reads.length, 2, 'browser File bypasses native filesystem');
   assert.ok(Buffer.from(posts[2].bytes).includes(Buffer.from(audioBytes)));
+  class RenderFile extends LocalFile {
+    constructor(...parts) { super(parts.join('/')); this.exists = false; }
+    write(bytes) { assert.deepEqual(Array.from(bytes), [1, 2, 3]); this.exists = true; }
+    delete() { this.exists = false; }
+  }
+  const { renderChoreography } = load('src/editor/render.ts', {
+    'expo-file-system': { File: RenderFile, Paths: { cache: 'file:///cache' } },
+    'expo/fetch': { fetch: async (url, options) => {
+      const result = await convertFormDataAsync(options.body, 'render-boundary');
+      const wire = Buffer.from(result.body).toString();
+      assert.equal(url, 'http://server/choreography/render');
+      assert.equal((wire.match(/name="audios"/g) || []).length, 2);
+      assert.equal((wire.match(/name="videos"/g) || []).length, 1);
+      assert.ok(wire.includes('"sourceStart":0'));
+      return { ok: true, arrayBuffer: async () => Uint8Array.from([1, 2, 3]).buffer };
+    } },
+    'react-native': { Platform: { OS: 'android' } },
+    '../storage/media': { saveMedia: async () => 'file:///app/final.mp4', deleteMedia: async () => {}, resolveMedia: async () => { throw new Error('unexpected web call'); } },
+  }, { FormData, Blob: NativeBlob });
+  const clip = { id: 'c', motifId: 'm', start: 1, sourceStart: 0, duration: 2 };
+  assert.equal(await renderChoreography('http://server/', { bass: 'file:///bass.wav', drums: 'file:///drums.wav' }, [clip], [{ id: 'm', video: 'file:///clip.mp4' }]), 'file:///app/final.mp4');
+  console.log('PASS: native render upload sends multiple layers and video through the Expo multipart converter');
   console.log('PASS: reproduce native URI and ArrayBuffer Blob errors; native MP3/WAV and browser uploads pass actual Expo SDK multipart converter, preserving bytes, filename, and options');
 })().catch(error => {console.error(error); process.exitCode = 1;});

@@ -14,7 +14,7 @@
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
         },
-        "NSLocalNetworkUsageDescription": "같은 Wi-Fi의 음원 분석 서버에 접속합니다.",
+        "NSLocalNetworkUsageDescription": "Connect to the audio analysis server on the same Wi-Fi network.",
         "UIBackgroundModes": [
           "audio"
         ]
@@ -59,18 +59,28 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "연습 영상을 가져오기 위해 사진 보관함을 사용합니다.",
-          "cameraPermission": "연습 동작을 촬영하기 위해 카메라를 사용합니다.",
-          "microphonePermission": "연습 영상의 소리를 녹음하기 위해 마이크를 사용합니다."
+          "photosPermission": "Allow access to your photo library to import practice videos.",
+          "cameraPermission": "Allow camera access to record practice videos.",
+          "microphonePermission": "Allow microphone access to record audio with practice videos."
         }
       ]
     ],
     "extra": {
-      "defaultServerUrl": "http://192.168.0.10:8000"
+      "defaultServerUrl": "http://10.249.26.32:8000",
+      "eas": {
+        "projectId": "f8029e9f-c0a6-4174-9d52-5c79aefbe138"
+      }
     },
     "scheme": "choreolayer",
     "web": {
       "bundler": "metro"
+    },
+    "owner": "sensible_life",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f8029e9f-c0a6-4174-9d52-5c79aefbe138"
     }
   }
 }

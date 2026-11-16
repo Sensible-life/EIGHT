@@ -15,5 +15,5 @@ fi
 export PYTORCH_ENABLE_MPS_FALLBACK=1  # MPS에서 미지원 op(FFT 등)는 CPU로 자동 fallback
 command -v ffmpeg >/dev/null || { echo "ffmpeg 필요: brew install ffmpeg"; exit 1; }
 IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}')
-echo "▶ 앱의 서버 주소에 입력:  http://${IP}:8000"
+echo "▶ 음악 분석 서버: http://${IP}:8000 (개발 앱은 같은 네트워크에서 자동 연결)"
 exec .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000

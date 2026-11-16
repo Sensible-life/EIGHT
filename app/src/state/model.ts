@@ -8,10 +8,12 @@ import type { SessionTracking } from '../tracking/types';
 export type PlaybackSnapshot = {
   position: number; duration: number; mix: Mix; master: number;
   loop: LoopRange; listened: number; layerSeconds: Record<string, number>;
+  playbackRate?: number;
+  composition?: { ranges: { start: number; end: number }[]; index: number };
   tracking?: SessionTracking; // camera tab totals (src/tracking); absent until something was tracked
 };
 export type Project = { id: string; job: Job; server: string; saved: boolean; updatedAt: number; cached?: boolean; remoteFiles?: Record<string, string> };
-export type Session = PlaybackSnapshot & { id: string; projectId: string; startedAt: number; endedAt?: number; missionWeek?: string };
+export type Session = PlaybackSnapshot & { id: string; projectId: string; startedAt: number; endedAt?: number; missionWeek?: string; missionId?: string; missionTitle?: string };
 export type Library = { version: 1; server: string; projects: Project[]; sessions: Session[]; joinedWeeks: string[]; extras?: Extras };
 export function weekKey(now = new Date()) {
   const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());

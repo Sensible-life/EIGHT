@@ -1,0 +1,16 @@
+import { Text, TextInput } from '../ui/Typography';
+import ServiceFeed from './ServiceFeed';
+import { useState } from 'react';
+import { View } from 'react-native';
+import { useLibrary } from '../state/LibraryProvider';
+import { samplePosts } from '../state/extras';
+import { Button, Card, Disclosure, ui } from '../ui/Kit';
+import { confirmAction } from '../ui/confirm';
+export default function CommunityFeed() {
+  const { data, updateExtras } = useLibrary(); const [draft, setDraft] = useState(''), [comments, setComments] = useState<Record<string, string>>({});
+  const posts = data.extras?.posts ?? [];
+  return <View style={{ gap: 16 }}><ServiceFeed /><Disclosure title={"On-device feed"} detail={"Private posts and samples"} icon="phone-portrait-outline"><Text style={ui.body}>This feed is local to this device. Posts, comments, and likes are not shared.</Text><Card><TextInput accessibilityLabel={"Write a post"} value={draft} onChangeText={setDraft} maxLength={1000} multiline style={[ui.input, { minHeight: 90 }]} placeholder={"Write a post"} /><Button title={"Save post to device"} disabled={!draft.trim()} onPress={() => { const text = draft.trim(); updateExtras(e => ({ ...e, posts: [{ id: `post-${Date.now()}`, author: "Me", text, sample: false, likes: 0, liked: false, comments: [] }, ...e.posts] })); setDraft(''); }} /><Button title={"Load sample feed"} secondary onPress={() => updateExtras(e => ({ ...e, posts: [...e.posts, ...samplePosts().filter(p => !e.posts.some(x => x.id === p.id))] }))} /></Card>
+    {posts.filter(p => !p.hidden).map(p => <Card key={p.id}><View style={ui.between}><Text style={ui.h3}>{p.author}</Text><Text style={ui.pill}>{p.sample ? "Sample" : "On device"}</Text></View><Text style={ui.body}>{p.text}</Text><Button title={`${p.liked ? "Unlike" : "Like"} · ${p.likes}`} secondary onPress={() => updateExtras(e => ({ ...e, posts: e.posts.map(x => x.id === p.id ? { ...x, liked: !x.liked, likes: Math.max(0, x.likes + (x.liked ? -1 : 1)) } : x) }))} />{p.comments.map((c, i) => <Text key={i} style={ui.small}>↳ {c}</Text>)}<TextInput accessibilityLabel={`${p.author} post comment`} style={ui.input} value={comments[p.id] ?? ''} onChangeText={value => setComments(c => ({ ...c, [p.id]: value }))} placeholder={"Write a comment · saved on this device"} maxLength={300} /><Button title={"Save comment"} secondary disabled={!comments[p.id]?.trim()} onPress={() => { const comment = comments[p.id].trim(); updateExtras(e => ({ ...e, posts: e.posts.map(x => x.id === p.id ? { ...x, comments: [...x.comments, comment] } : x) })); setComments(c => ({ ...c, [p.id]: '' })); }} /><Button title={"Hide post"} secondary onPress={() => updateExtras(e => ({ ...e, posts: e.posts.map(x => x.id === p.id ? { ...x, hidden: true } : x) }))} />{!p.sample && <Button title={"Delete my post"} secondary onPress={() => confirmAction("Delete my post", "Delete this post and its comments from this device.", () => updateExtras(e => ({ ...e, posts: e.posts.filter(x => x.id !== p.id) })))} />}</Card>)}
+    {!!posts.filter(p => p.hidden).length && <Button title={"Show hidden posts"} secondary onPress={() => updateExtras(e => ({ ...e, posts: e.posts.map(p => ({ ...p, hidden: false })) }))} />}
+  </Disclosure></View>;
+}

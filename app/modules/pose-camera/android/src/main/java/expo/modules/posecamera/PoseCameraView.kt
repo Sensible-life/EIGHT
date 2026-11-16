@@ -22,6 +22,7 @@ class PoseCameraView(context: Context, appContext: AppContext) : ExpoView(contex
     private val onPose by EventDispatcher()
     private val onEngine by EventDispatcher()
     private val onError by EventDispatcher()
+    private val onRecording by EventDispatcher()
     private val main = Handler(Looper.getMainLooper())
     private val previewView = PreviewView(context).apply {
         implementationMode = PreviewView.ImplementationMode.COMPATIBLE // TextureView: JS overlays draw on top
@@ -37,6 +38,9 @@ class PoseCameraView(context: Context, appContext: AppContext) : ExpoView(contex
     init {
         addView(previewView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
+
+    fun startRecording() { requireNotNull(source) { "카메라 준비를 기다려 주세요." }.startRecording { state, value -> onRecording(mapOf("state" to state, "value" to value)) } }
+    fun stopRecording() { source?.stopRecording() }
 
     fun setActive(active: Boolean) {
         wantActive = active

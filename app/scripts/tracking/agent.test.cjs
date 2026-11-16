@@ -1,0 +1,14 @@
+const assert = require('node:assert/strict');
+const { initialAgentState, considerMovement, respondToMovement } = require('../load-ts.cjs')('src/agent/decision.ts');
+const cue = { t: 1, kind: 'segment_unexplored', target: 'arm_l', text: '' };
+const input = { now: 100000, cue, tracking: 'tracking', playing: true, recording: false };
+const initial = initialAgentState();
+for (const change of [{ tracking: 'waiting' }, { playing: false }, { recording: true }, { cue: null }]) assert.equal(considerMovement(initial, { ...input, ...change }), initial);
+const offered = considerMovement(initial, input);
+assert.equal(offered.pending.target, 'arm_l');
+assert.equal(considerMovement(offered, { ...input, now: 300000 }), offered);
+assert.equal(respondToMovement(offered, 'stale'), offered);
+const closed = respondToMovement(offered, offered.pending.id);
+assert.equal(considerMovement(closed, { ...input, now: 190001 }), closed);
+assert.ok(considerMovement(closed, { ...input, now: 190001, cue: { ...cue, target: 'leg_l' } }).pending);
+console.log('PASS: movement agent eligibility, cooldown and response identity');

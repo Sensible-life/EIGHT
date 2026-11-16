@@ -12,7 +12,7 @@ const dir = path.join(__dirname, '..', 'fixtures', 'tracking');
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.json.gz')).sort();
 assert.equal(files.length, 8, `expected 8 fixtures in ${dir}`);
 
-// Every number must agree with id403 to 1e-6 (spec §5.1). Exact fields (state, levels, flags, cue text) compare with ===.
+// Every number must agree with id403 to 1e-6 (spec §5.1). App-facing cue wording may differ.
 function compare(actual, expected, where) {
   if (typeof expected === 'number') {
     assert.equal(typeof actual, 'number', `${where}: expected a number, got ${JSON.stringify(actual)}`);
@@ -24,7 +24,11 @@ function compare(actual, expected, where) {
   } else if (expected !== null && typeof expected === 'object') {
     assert.ok(actual !== null && typeof actual === 'object', `${where}: got ${JSON.stringify(actual)}`);
     assert.deepEqual(Object.keys(actual).sort(), Object.keys(expected).sort(), `${where}: keys`);
-    for (const k of Object.keys(expected)) compare(actual[k], expected[k], `${where}.${k}`);
+    for (const k of Object.keys(expected)) {
+      if (k === 'text' && where.includes('messages')) {
+        assert.ok(typeof actual[k] === 'string' && actual[k].trim(), `${where}.text: expected a message`);
+      } else compare(actual[k], expected[k], `${where}.${k}`);
+    }
   } else {
     assert.equal(actual, expected, where);
   }

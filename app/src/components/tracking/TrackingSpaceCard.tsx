@@ -1,10 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from '../../ui/Typography';
+import { StyleSheet, View } from 'react-native';
 import type { Session } from '../../state/model';
 import { moveInsights } from '../../tracking/insights';
 import { C } from '../../theme';
 import { Card, Icon, ui } from '../../ui/Kit';
 
-const ROWS = ['높음', '중간', '낮음'], COLS = ['왼쪽', '가운데', '오른쪽'];
+const ROWS = ["High", "Mid", "Low"], COLS = ["Left", "Center", "Right"];
 const USED_SHARE = 0.03; // a cell counts as used from 3% of the time
 
 /** Analysis tab: where the dancer was, from the spot they calibrated on. Left / right = the dancer's own. */
@@ -13,21 +14,21 @@ export default function TrackingSpaceCard({ sessions }: { sessions: Session[] })
   if (!insight) return (
     <Card>
       <Icon name="grid-outline" color={C.dim} size={28} />
-      <Text style={ui.h3}>카메라로 본 공간</Text>
-      <Text style={ui.body}>세션의 카메라 탭에서 춤추면 점프·앉기·옆 이동·기울이기와 머문 자리를 보여줘요.</Text>
+      <Text style={ui.h3}>Space from camera</Text>
+      <Text style={ui.body}>Use the camera during a session to track jumps, squats, side steps, leans, and occupied areas.</Text>
     </Card>
   );
   const m = insight.moves, sum = m.spaceMs.reduce((a, b) => a + b, 0);
   const share = (i: number) => (sum ? m.spaceMs[i] / sum : 0);
   const used = m.spaceMs.filter((_, i) => share(i) >= USED_SHARE).length;
   const counts = [
-    `점프 ${m.jump}번`, `앉기 ${m.low}번`, `옆 이동 왼쪽 ${m.travel.l} · 오른쪽 ${m.travel.r}`, `기울이기 왼쪽 ${m.lean.l} · 오른쪽 ${m.lean.r}`,
+    `Jumps ${m.jump}`, `Squats ${m.low}`, `Side steps: left ${m.travel.l} · right ${m.travel.r}`, `Leans: left ${m.lean.l} · right ${m.lean.r}`,
   ];
   return (
     <Card>
       <View style={ui.between}>
-        <Text style={ui.h3}>카메라로 본 공간</Text>
-        <Text style={ui.pill}>쓴 칸 {used} / 9</Text>
+        <Text style={ui.h3}>Space from camera</Text>
+        <Text style={ui.pill}>Cells used {used} / 9</Text>
       </View>
       <View style={s.grid}>
         {ROWS.map((row, r) => (
@@ -49,7 +50,7 @@ export default function TrackingSpaceCard({ sessions }: { sessions: Session[] })
         </View>
       </View>
       <Text style={ui.body}>{counts.join('\n')}</Text>
-      <Text style={ui.small}>처음 가만히 선 자리를 기준으로 한 머문 시간 비율이에요. 왼쪽·오른쪽은 춤추는 사람 기준이에요.</Text>
+      <Text style={ui.small}>{"Share of time spent in each area relative to the starting position. Left and right are from the dancer's perspective."}</Text>
     </Card>
   );
 }

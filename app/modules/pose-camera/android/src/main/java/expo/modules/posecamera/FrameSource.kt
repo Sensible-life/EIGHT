@@ -18,5 +18,7 @@ interface FrameSource {
     /** Start delivering frames; [onFrame] runs on the source's own thread; [onError] gets a short Korean message when the camera cannot start.[preview] shows the camera on screen, if the source can. */
     fun start(owner: LifecycleOwner, preview: Preview.SurfaceProvider?, onFrame: (Frame) -> Unit, onError: (String) -> Unit)
 
+    fun startRecording(onEvent: (String, String) -> Unit) { throw UnsupportedOperationException("이 카메라에서는 녹화할 수 없어요.") }
+    fun stopRecording() {}
     fun stop()
 }
