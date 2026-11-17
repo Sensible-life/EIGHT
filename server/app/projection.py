@@ -8,7 +8,7 @@ import re
 import time
 from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from .display_agent import MovementGuide, Observation, TARGETS
 
 router = APIRouter()
@@ -38,6 +38,37 @@ def _movement(value):
     return {k: value[k] for k in MOVEMENT}
 
 
+PART = {
+    'kind': ('hold', 'reach', 'circle', 'swing', 'shake', 'shift', 'travel', 'jump', 'drop'), 'speed': MOVEMENT['speed'], 'size': MOVEMENT['size'],
+    'texture': MOVEMENT['texture'], 'toward': ('up', 'side', 'down', None), 'timing': MOVEMENT['timing'],
+}
+PART_NAMES = ('arm_l', 'arm_r', 'leg_l', 'leg_r', 'torso')
+SPACE = {'zone': ('left', 'center', 'right'), 'level': ('low', 'mid', 'high'), 'depth': ('near', 'home', 'far'), 'weight': ('left', 'center', 'right')}
+
+
+def _words(value, allowed):
+    return all((value[k] is None or isinstance(value[k], str)) and value[k] in words for k, words in allowed.items())
+
+
+def _parts(value):
+    """What each body part did (movement.js): the five parts, each with exactly the known keys and words."""
+    if not isinstance(value, dict) or set(value) != set(PART_NAMES):
+        return None
+    if any(not isinstance(p, dict) or set(p) != set(PART) or not _words(p, PART) for p in value.values()):
+        return None
+    return {name: {k: value[name][k] for k in PART} for name in PART_NAMES}
+
+
+def _space(value):
+    """Where the dancer is against the calibrated spot (movement.js): known words, offsets in torso lengths."""
+    numbers = ('x', 'y', 'width')
+    if not isinstance(value, dict) or set(value) != set(SPACE) | set(numbers) or not _words(value, SPACE):
+        return None
+    if any(type(value[k]) not in (int, float) or not math.isfinite(value[k]) or abs(value[k]) > 50 for k in numbers):
+        return None
+    return {k: value[k] for k in (*SPACE, *numbers)}
+
+
 def _body(value):
     if not isinstance(value, dict):
         return None
@@ -61,6 +92,17 @@ def creative_display(room: str):
     if room != 'demo' and not ROOM.fullmatch(room):
         return HTMLResponse('Invalid room', status_code=404)
     return HTMLResponse((Path(__file__).parent / 'display.html').read_text(encoding='utf-8'))
+
+
+@router.get('/movement', response_class=HTMLResponse)
+def movement_camera():
+    """Webcam page: reads the dancer's movement in the browser and publishes the labels to a room."""
+    return HTMLResponse((Path(__file__).parent / 'movement.html').read_text(encoding='utf-8'))
+
+
+@router.get('/movement.js')
+def movement_module():
+    return Response((Path(__file__).parent / 'movement.js').read_text(encoding='utf-8'), media_type='text/javascript')
 
 
 async def broadcast(state: dict, packet: str):
@@ -143,6 +185,10 @@ async def relay(ws: WebSocket, room: str, role: str):
                 movement = _movement(data.get('movement')) if active else None
                 if movement is not None:
                     packet['movement'] = movement
+                for key, check in (('parts', _parts), ('space', _space)):
+                    checked = check(data.get(key)) if active else None
+                    if checked is not None:
+                        packet[key] = checked
                 if recording:
                     packet['recording'] = True
                 agent = guide.observe(Observation(active=active and body is not None,

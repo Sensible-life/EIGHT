@@ -57,10 +57,14 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
   };
   const PART = {head:'Head',torso:'Torso',arm_l:'Left arm',arm_r:'Right arm',leg_l:'Left leg',leg_r:'Right leg','whole body':'Whole body'};
   const WORDS = new Set(['still','slow','medium','fast','small','large','in place','left','right','up','down','side to side','up-down','smooth','sharp','on beat','off beat','mixed',...Object.keys(PART)]);
-  function movement(m) {
+  function movement(m, parts, space) {
     const box = $('movement'); box.textContent = '';
     const rows = m ? [['Speed',m.speed],['Size',m.size],['Direction',m.direction],['Texture',m.texture],['Lead',PART[m.lead]],['Timing',m.timing]] : [];
     for (const [name, word] of rows) { if (typeof word !== 'string' || !(WORDS.has(word) || Object.values(PART).includes(word))) continue; const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, word); box.appendChild(tag); }
+    const line = (name, text) => { const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, text); box.appendChild(tag); };
+    const ok = v => typeof v === 'string' && /^[a-z -]{1,16}$/.test(v);
+    if (parts && typeof parts === 'object') for (const [name, p] of Object.entries(parts)) { if (PART[name] && p && ok(p.kind) && p.kind !== 'hold') line(PART[name], [p.kind, p.size, p.texture, p.timing].filter(ok).join(' · ')); }
+    if (space && typeof space === 'object' && [space.zone, space.level, space.depth].every(ok)) line('Space', `${space.zone} · ${space.level} · ${space.depth}` + (Number.isFinite(space.width) ? ` · ${space.width} wide` : ''));
     if (!box.children.length) { const tag = document.createElement('span'); tag.className = 'info'; tag.textContent = 'Appears while movement is tracked.'; box.appendChild(tag); }
   }
   const send = obj => { if (view && view.readyState === WebSocket.OPEN) view.send(JSON.stringify(obj)); };
@@ -73,7 +77,7 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
     $('mode').textContent = isDemo ? 'DEMO · SIMULATED' : data.missionTitle ? `MISSION · ${data.missionTitle}` : 'LIVE SPACE';
     $('calibration').textContent = data.calibrated ? 'Floor calibrated' : 'Camera view';
     data.cells.forEach((v,i) => { const amount=Math.max(0,Math.min(1,Number(v)||0)); heat.children[i].style.background = `rgba(234,100,229,${.08+.9*Math.sqrt(amount)})`; });
-    movement(data.movement);
+    movement(data.movement, data.parts, data.space);
     if (data.body) {
       const u=Math.max(0,Math.min(1,data.body.upper)),l=Math.max(0,Math.min(1,data.body.lower));
       $('upper').textContent=Math.round(u*100)+'%'; $('lower').textContent=Math.round(l*100)+'%';

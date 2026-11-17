@@ -1,7 +1,6 @@
 // Glue between the pose-camera events, the music player and the camera tab. Holds one LiveSession for the
 // whole practice session (it outlives tab switches) and exposes a throttled view for useSyncExternalStore.
 import { DEFAULT_CONFIG, type TrackingConfig } from './config';
-import { MovementClassifier } from '../movement/classify';
 import { LiveSession } from './session';
 import { NUM_LANDMARKS } from './types';
 import { countInEight, planFor, type EightPlan } from './windows';
@@ -46,8 +45,6 @@ const planName = (p: EightPlan): PlanName => (p.kind === 'grid' ? p.source : p.k
 
 export class LiveTrackingStore {
   readonly session: LiveSession;
-  /** How the last seconds were danced (src/movement): fed every frame, read by the display link. */
-  readonly movement = new MovementClassifier();
   private view: TrackingView;
   private pending: Partial<TrackingView> = {};
   private listeners = new Set<() => void>();
@@ -94,20 +91,6 @@ export class LiveTrackingStore {
 
   setMusicSource(source: MusicSource | null): void {
     this.music = source;
-  }
-
-  /** Where the song is now (stopped at 0 without a player). */
-  musicNow(): { position: number; playing: boolean } {
-    const m = this.music?.();
-    return m ? { position: m.position, playing: m.playing } : { position: 0, playing: false };
-  }
-
-  /** Seconds per beat of the current plan: an eighth of an eight (the song's first eight when the server analysed it). */
-  beatSeconds(): number {
-    const p = this.plan;
-    if (p.kind === 'grid') return p.seconds / 8;
-    if (p.kind === 'eights' && p.eights.length && p.eights[0].end > p.eights[0].start) return (p.eights[0].end - p.eights[0].start) / 8;
-    return this.cfg.aggregate.windows['8count_s'] / 8;
   }
 
   setPlan(plan: EightPlan): void {
@@ -172,7 +155,6 @@ export class LiveTrackingStore {
     this.lastTMs = e.tMs;
     this.session.perf.captureFrom = e.captureFrom;
     if (!pose) this.pending.pose = null; // nobody in view: clear the skeleton
-    else this.movement.add({ tMs: e.tMs, image: pose.image, visibility: pose.visibility, aspect: e.aspect, musicT: music.playing ? musicT : null, beatS: music.playing ? this.beatSeconds() : null });
     this.session.step(e.tMs, pose, e.aspect, { playing: music.playing && this.capturing, musicT }, { captureMs: e.latencyMs, sourceFrames: e.seq });
     this.set({ playing: music.playing, count: countInEight(this.plan, musicT), error: null }); // frames flowing: an earlier error is over
   }

@@ -53,15 +53,6 @@ cd <id403>
 - 화면의 "3 / 8" 박 번호는 현재 8카운트를 8등분한 위치다(`analysis.beats`를 쓰지 않는다). 실기기에서 어긋나 보이면 beats 기준으로 바꾼다.
 - 세션 기록: `Session.tracking = { version: 1, trackedMs, totals, moves? }`(5초마다 저장). 이어하기 하면 누적이 이어진다. 분석 탭의 "카메라로 본 몸 사용" 카드는 30초 이상 트래킹한 세션을 합친다.
 
-## 움직임 라벨 (`src/movement/classify.ts`)
-관절 좌표 프레임을 넣으면 최근 4초(약 한 8카운트)를 말로 구분한다. 트래커와 별개인 한 파일이고 `store.movement`가 매 프레임 넣는다.
-- 속도 still/slow/medium/fast · 크기 small/medium/large · 방향 in place/left/right/up/down/side to side/up-down · 질감 smooth/sharp · 주도 부위 · 박자 on beat/off beat/mixed.
-- 골반 중심, 몸통 길이 단위의 2D 화면 좌표를 쓴다. 제자리 회전은 still로 읽힌다. 기준값(`MOVEMENT_DEFAULTS`)은 합성 동작에만 맞춘 첫 값이다.
-- 디스플레이 연결(`ProjectionCard`)이 패킷의 `movement`로 보내고, 서버(`projection.py`)가 아는 단어만 통과시켜 `/display/<room>`에 보인다.
-
-## 브라우저에서 확인하기 (시연용)
-`npm run web`의 카메라 탭은 `WebPoseCamera.ts`를 쓴다. 입력은 웹캠, 영상 파일, 합성 동작(`demoMoves.ts`, 8종) 세 가지이고 Android 모듈과 같은 `PoseEvent`를 보낸다. 브라우저에는 영상 녹화가 없어서 [Start recording]은 집계와 디스플레이 전송만 켠다(같은 `onVideo` 흐름, 영상 주소는 빈 문자열). 합성 동작은 음악이 재생될 때만 움직인다.
-
 ## 동작 감지와 공간 (분석 탭에서만)
 세션 중에는 화면에 띄우지 않고 세어 두었다가, 분석 탭의 **Patterns → "카메라로 본 동작"**과 **Space → "카메라로 본 공간"** 카드에 보여준다. 로직은 `src/tracking/moves.ts`(`MoveDetector`, `LiveSession`이 함께 돌림), 임계값은 `config.ts`의 `moves` 섹션(모두 (tune)), 테스트는 `scripts/tracking/moves.test.cjs`.
 

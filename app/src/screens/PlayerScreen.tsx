@@ -238,8 +238,7 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, mis
           else if (event.state === 'started') { tracking.beginTake(); videoStartedAt.current = Date.now(); videoOffset.current = 0; videoStart.current = player.current?.playing ? player.current.position : null; videoLast.current = videoStart.current ?? 0; }
           else if (event.state === 'error') { tracking.finishTake(false); videoStart.current = null; videoStartedAt.current = 0; setRecordingVideo(false); setVideoNotice(displayMessage(event.value)); }
           else { tracking.endTakeCapture(); const start = videoStart.current, current = player.current?.position ?? videoLast.current; const end = Math.min(duration, current > (start ?? 0) ? current : videoLast.current); videoStart.current = null; videoStartedAt.current = 0;
-            if (!event.value) { tracking.finishTake(start !== null && end > start); setRecordingVideo(false); setVideoNotice('Recording ended. The browser keeps no video.'); } // browser stand-in: no video file
-            else if (start === null || end <= start || !onSaveVideo) { tracking.finishTake(false); try { discardTemporaryVideo(event.value); } catch {} setRecordingVideo(false); setVideoNotice("No music segment was recorded. Play the track and record again."); }
+            if (start === null || end <= start || !onSaveVideo) { tracking.finishTake(false); try { discardTemporaryVideo(event.value); } catch {} setRecordingVideo(false); setVideoNotice("No music segment was recorded. Play the track and record again."); }
             else { draftRef.current = event.value; setDraft({ uri: event.value, start, end, mix, videoOffset: videoOffset.current, videoRate: playbackRate }); setVideoNotice('Review the recording before saving.'); }
           }
         }} />}

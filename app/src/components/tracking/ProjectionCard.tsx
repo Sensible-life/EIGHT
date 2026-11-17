@@ -35,7 +35,7 @@ export default function ProjectionCard({ store, server, playing, recording, corn
       if (socket.readyState !== WebSocket.OPEN) return;
       const view = store.getView(), active = recordingRef.current && live.current && view.status?.state === 'tracking' && !!view.usage['8count']?.tracking_ok && !!view.pose && Date.now() - view.pose.t < 500;
       const music = store.getMusicSnapshot();
-      socket.send(JSON.stringify({ active, missionTitle, context: { position: music?.position ?? null, playing: music?.playing === true, loop: contextRef.current.loop, saveRevision: contextRef.current.saveRevision }, recording: recordingRef.current, calibrated: calibrated.current, cells: heat.current.update(view.pose, active, Date.now()), ...(active ? { body: bodySummary(view.usage.recent, view.pose), movement: store.movement.label() } : {}) }));
+      socket.send(JSON.stringify({ active, missionTitle, context: { position: music?.position ?? null, playing: music?.playing === true, loop: contextRef.current.loop, saveRevision: contextRef.current.saveRevision }, recording: recordingRef.current, calibrated: calibrated.current, cells: heat.current.update(view.pose, active, Date.now()), ...(active ? { body: bodySummary(view.usage.recent, view.pose) } : {}) }));
     }, 250);
     return () => { clearInterval(timer); socketRef.current = null; agentCallback.current(null); if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ active: false, cells: Array(64).fill(0) })); socket.close(); };
   }, [enabled, base, room, store, missionTitle]);
