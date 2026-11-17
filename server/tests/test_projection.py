@@ -14,5 +14,11 @@ class ProjectionTest(unittest.TestCase):
                     cells[7] = 1.0
                     publisher.send_json({'active': True, 'cells': cells, 'pose': [1, 2, 3]})
                     self.assertEqual(viewer.receive_json(), {'active': True, 'calibrated': False, 'cells': cells})
+                    movement = {'speed': 'slow', 'size': 'large', 'direction': 'side to side', 'texture': 'smooth', 'lead': 'arm_l', 'timing': None}
+                    publisher.send_json({'active': True, 'cells': cells, 'movement': movement})
+                    self.assertEqual(viewer.receive_json(), {'active': True, 'calibrated': False, 'cells': cells, 'movement': movement})
+                    for bad in ({**movement, 'speed': 'warp'}, {**movement, 'extra': 1}, {'speed': 'slow'}, {**movement, 'lead': ['arm_l']}, 'fast'):
+                        publisher.send_json({'active': True, 'cells': cells, 'movement': bad})
+                        self.assertEqual(viewer.receive_json(), {'active': True, 'calibrated': False, 'cells': cells})
                     publisher.send_json({'active': False, 'calibrated': False, 'cells': [0.0] * 64})
                     self.assertEqual(viewer.receive_json(), {'active': False, 'calibrated': False, 'cells': [0.0] * 64})

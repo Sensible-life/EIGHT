@@ -171,3 +171,20 @@ function harness({ playing = true, stepMs = 66 } = {}) {
   h.store.importTracking(undefined); // sessions saved before tracking existed
   assert.deepEqual(h.store.exportTracking(), saved, 'importing nothing keeps the restored totals');
 }
+
+{
+  // what the demo input needs from the store: where the song is, and how long a beat is
+  const h = harness();
+  h.send();
+  assert.deepEqual(h.store.musicNow(), { position: 0.066, playing: true });
+  assert.equal(h.store.beatSeconds(), 0.5, 'fixed 4 s eights: half a second per beat');
+  h.store.setPlan(planFor(null, 100, 4));
+  close(h.store.beatSeconds(), 0.6);
+  h.store.setPlan(planFor([{ index: 0, start: 1, end: 4.2 }, { index: 1, start: 4.2, end: 7.4 }], null, 4));
+  close(h.store.beatSeconds(), 0.4);
+  h.store.setMusicSource(null);
+  assert.deepEqual(h.store.musicNow(), { position: 0, playing: false });
+  // every frame also feeds the movement labels
+  for (let i = 0; i < 40; i++) h.send();
+  assert.equal(h.store.movement.label().speed, 'still', 'a standing dancer reads as still');
+}

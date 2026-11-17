@@ -21,6 +21,23 @@ def _number(value):
     return type(value) in (int, float) and math.isfinite(value) and 0 <= value <= 1
 
 
+MOVEMENT = {
+    'speed': ('still', 'slow', 'medium', 'fast'), 'size': ('small', 'medium', 'large'),
+    'direction': ('in place', 'left', 'right', 'up', 'down', 'side to side', 'up-down'),
+    'texture': ('smooth', 'sharp', None), 'lead': ('head', 'torso', 'arm_l', 'arm_r', 'leg_l', 'leg_r', 'whole body', None),
+    'timing': ('on beat', 'off beat', 'mixed', None),
+}
+
+
+def _movement(value):
+    """Movement labels from app/src/movement/classify.ts: exactly these keys, each one of its known words."""
+    if not isinstance(value, dict) or set(value) != set(MOVEMENT):
+        return None
+    if any(not (value[k] is None or isinstance(value[k], str)) or value[k] not in words for k, words in MOVEMENT.items()):
+        return None
+    return {k: value[k] for k in MOVEMENT}
+
+
 def _body(value):
     if not isinstance(value, dict):
         return None
@@ -36,14 +53,14 @@ def _body(value):
 def display(room: str):
     if not ROOM.fullmatch(room):
         return HTMLResponse('Invalid room', status_code=404)
-    return HTMLResponse((Path(__file__).parent / 'projection.html').read_text())
+    return HTMLResponse((Path(__file__).parent / 'projection.html').read_text(encoding='utf-8'))
 
 
 @router.get('/display/{room}', response_class=HTMLResponse)
 def creative_display(room: str):
     if room != 'demo' and not ROOM.fullmatch(room):
         return HTMLResponse('Invalid room', status_code=404)
-    return HTMLResponse((Path(__file__).parent / 'display.html').read_text())
+    return HTMLResponse((Path(__file__).parent / 'display.html').read_text(encoding='utf-8'))
 
 
 async def broadcast(state: dict, packet: str):
@@ -123,6 +140,9 @@ async def relay(ws: WebSocket, room: str, role: str):
                     packet['missionTitle'] = data['missionTitle']
                 if body is not None:
                     packet['body'] = body
+                movement = _movement(data.get('movement')) if active else None
+                if movement is not None:
+                    packet['movement'] = movement
                 if recording:
                     packet['recording'] = True
                 agent = guide.observe(Observation(active=active and body is not None,

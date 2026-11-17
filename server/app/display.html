@@ -12,6 +12,7 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
 .body-key{display:flex;justify-content:center;gap:34px;margin-top:-5px}.body-key strong{display:block;font-size:24px;font-weight:600;letter-spacing:-.04em}.body-key span{color:var(--muted);font-size:11px}.note{color:#a99aaf;font-size:11px;line-height:1.5;margin:10px auto 0;max-width:370px}
 .nudge{position:absolute;top:32%;left:65%;z-index:1;background:#f8eafa;color:#301d36;border-radius:17px 17px 17px 4px;padding:10px 14px;font-size:12px;font-weight:600;box-shadow:0 8px 28px #13091e66;white-space:nowrap}
 .dashboard{display:flex;flex-direction:column;gap:14px}.card{border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,#ffffff0e,#ffffff05);padding:clamp(18px,2vw,26px)}.card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.card h2{font-size:16px;letter-spacing:-.02em;margin:5px 0 0}.micro{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#c99ccc}.info{font-size:11px;color:var(--muted)}.heat-layout{display:flex;align-items:center;gap:22px;margin-top:18px}.heat{width:min(47%,180px);flex:none;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);gap:3px}.cell{background:#302538;border-radius:3px;transition:background .35s}.heat-copy{font-size:13px;line-height:1.55;color:#d1c3d6}.heat-copy small{color:#a99aaf}.legend{height:4px;border-radius:4px;background:linear-gradient(90deg,#44324e,#a240be,#ef8ee6);margin-top:12px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;min-height:34px}.tag{border:1px solid var(--line);border-radius:99px;padding:7px 12px;font-size:13px;background:#ffffff0a}.tag small{color:var(--muted);margin-right:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
 .guide{min-height:180px;position:relative;overflow:hidden}.guide:before{content:"";position:absolute;width:180px;height:180px;right:-60px;top:-80px;background:#cf48db;filter:blur(80px);opacity:.24;pointer-events:none}.guide-content{position:relative}.guide-label{display:flex;justify-content:space-between;gap:12px;align-items:center}.guide-title{font-size:clamp(18px,2.1vw,25px);line-height:1.22;letter-spacing:-.03em;font-weight:650;margin:14px 0 6px}.guide-desc{color:#cbbdd1;font-size:13px;line-height:1.5;max-width:430px}.actions{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}button{font:inherit;cursor:pointer}.button{border:0;border-radius:99px;padding:10px 17px;background:#f4eaf6;color:#211727;font-size:12px;font-weight:700}.button.secondary{background:#ffffff12;color:#ebdded;border:1px solid #ffffff20}.button:focus-visible,.toggle:focus-visible{outline:2px solid #f3a6ef;outline-offset:3px}.toggle{border:0;background:none;padding:8px 0;color:#d5bcda;font-size:11px}.foot{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;color:#9f90a8;font-size:11px;line-height:1.5}.foot a{color:#e4c2e7;text-decoration:none}.hidden{display:none!important}
 @media(max-width:760px){main{grid-template-columns:1fr;gap:24px}.shell{padding:20px}.figure{width:min(60%,280px)}.visual h1{font-size:32px}.dashboard{padding-bottom:14px}.heat{width:44%}.foot{flex-direction:column;align-items:flex-start}.brand{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.orb,.orbit{animation:none}.figure ellipse,.cell{transition:none}}
@@ -33,7 +34,8 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
   </section>
   <section class="dashboard" aria-label="Live space and creative guide">
     <article class="card"><div class="card-head"><div><div class="micro">01 / Space</div><h2>Where you moved</h2></div><span id="calibration" class="info">Waiting</span></div><div class="heat-layout"><div id="heat" class="heat" aria-label="Foot position heatmap"></div><div class="heat-copy">A trace of your movement through the space.<div class="legend"></div><small>Less <span style="float:right">More</span></small></div></div><p class="note" style="margin:12px 0 0;max-width:none">Estimated foot positions; occluded feet are excluded.</p></article>
-    <article class="card guide"><div class="guide-content"><div class="guide-label"><div class="micro">02 / Creative guide</div><button id="toggle" class="toggle" type="button" aria-pressed="true">Suggestions on</button></div><div id="guide-title" class="guide-title">Space to explore.</div><div id="guide-desc" class="guide-desc">A movement idea can appear here when tracking is ready.</div><div id="actions" class="actions hidden"><button class="button" id="accept" type="button">Try this</button><button class="button secondary" id="dismiss" type="button">Not now</button></div><div id="engine" class="info" style="margin-top:12px">LOCAL GUIDE · PROTOTYPE</div></div></article>
+    <article class="card"><div class="card-head"><div><div class="micro">02 / Movement</div><h2>How you moved</h2></div><span class="info">Last few seconds</span></div><div id="movement" class="tags"></div><p class="note" style="margin:12px 0 0;max-width:none">Descriptions of the recent movement, not a score.</p></article>
+    <article class="card guide"><div class="guide-content"><div class="guide-label"><div class="micro">03 / Creative guide</div><button id="toggle" class="toggle" type="button" aria-pressed="true">Suggestions on</button></div><div id="guide-title" class="guide-title">Space to explore.</div><div id="guide-desc" class="guide-desc">A movement idea can appear here when tracking is ready.</div><div id="actions" class="actions hidden"><button class="button" id="accept" type="button">Try this</button><button class="button secondary" id="dismiss" type="button">Not now</button></div><div id="engine" class="info" style="margin-top:12px">LOCAL GUIDE · PROTOTYPE</div></div></article>
   </section>
 </main>
 <footer class="foot"><span>Video and pose landmarks stay on your phone.<br>Only movement aggregates are shared on your local network.</span><a href="/display/demo">Open demo ↗</a></footer>
@@ -51,8 +53,16 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
     $('status').textContent = message; $('dot').classList.remove('live'); $('calibration').textContent = 'Waiting';
     $('upper').textContent = $('lower').textContent = '—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74);
     for (const cell of heat.children) cell.style.background = '#302538';
-    activeProposal = null; $('actions').classList.add('hidden'); $('nudge').classList.add('hidden'); $('guide-title').textContent='Space to explore.'; $('guide-desc').textContent='A movement idea can appear here when tracking is ready.';
+    movement(null); activeProposal = null; $('actions').classList.add('hidden'); $('nudge').classList.add('hidden'); $('guide-title').textContent='Space to explore.'; $('guide-desc').textContent='A movement idea can appear here when tracking is ready.';
   };
+  const PART = {head:'Head',torso:'Torso',arm_l:'Left arm',arm_r:'Right arm',leg_l:'Left leg',leg_r:'Right leg','whole body':'Whole body'};
+  const WORDS = new Set(['still','slow','medium','fast','small','large','in place','left','right','up','down','side to side','up-down','smooth','sharp','on beat','off beat','mixed',...Object.keys(PART)]);
+  function movement(m) {
+    const box = $('movement'); box.textContent = '';
+    const rows = m ? [['Speed',m.speed],['Size',m.size],['Direction',m.direction],['Texture',m.texture],['Lead',PART[m.lead]],['Timing',m.timing]] : [];
+    for (const [name, word] of rows) { if (typeof word !== 'string' || !(WORDS.has(word) || Object.values(PART).includes(word))) continue; const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, word); box.appendChild(tag); }
+    if (!box.children.length) { const tag = document.createElement('span'); tag.className = 'info'; tag.textContent = 'Appears while movement is tracked.'; box.appendChild(tag); }
+  }
   const send = obj => { if (view && view.readyState === WebSocket.OPEN) view.send(JSON.stringify(obj)); };
   $('toggle').onclick = () => { if (!view || view.readyState !== WebSocket.OPEN) return; send({type:'agent_enabled',enabled:!enabled}); };
   for (const [id, choice] of [['accept','accept'],['dismiss','dismiss']]) $(id).onclick = () => { if (activeProposal) send({type:'agent_response',proposalId:activeProposal,choice}); };
@@ -63,6 +73,7 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
     $('mode').textContent = isDemo ? 'DEMO · SIMULATED' : data.missionTitle ? `MISSION · ${data.missionTitle}` : 'LIVE SPACE';
     $('calibration').textContent = data.calibrated ? 'Floor calibrated' : 'Camera view';
     data.cells.forEach((v,i) => { const amount=Math.max(0,Math.min(1,Number(v)||0)); heat.children[i].style.background = `rgba(234,100,229,${.08+.9*Math.sqrt(amount)})`; });
+    movement(data.movement);
     if (data.body) {
       const u=Math.max(0,Math.min(1,data.body.upper)),l=Math.max(0,Math.min(1,data.body.lower));
       $('upper').textContent=Math.round(u*100)+'%'; $('lower').textContent=Math.round(l*100)+'%';
@@ -88,7 +99,7 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
     publisher.onopen=()=>{ const start=Date.now(); demoTimer=setInterval(()=>{
       const t=(Date.now()-start)/1000, x=3.5+2.1*Math.sin(t*.26), y=3.5+2*Math.cos(t*.19);
       const cells=Array.from({length:64},(_,i)=>{ const dx=i%8-x,dy=Math.floor(i/8)-y; return Math.round(Math.exp(-(dx*dx+dy*dy)/3)*1000)/1000; });
-      const upper=.64+.12*Math.sin(t*.15); publisher.send(JSON.stringify({active:true,calibrated:true,cells,context:{position:t,loop:null,saveRevision:0},body:{upper,lower:1-upper,underused:['leg_l']}}));
+      const upper=.64+.12*Math.sin(t*.15); publisher.send(JSON.stringify({active:true,calibrated:true,cells,context:{position:t,loop:null,saveRevision:0},body:{upper,lower:1-upper,underused:['leg_l']},movement:[{speed:'slow',size:'large',direction:'in place',texture:'smooth',lead:'arm_r',timing:'on beat'},{speed:'medium',size:'medium',direction:'side to side',texture:'sharp',lead:'whole body',timing:'mixed'},{speed:'still',size:'small',direction:'in place',texture:null,lead:null,timing:null}][Math.floor(t/6)%3]}));
     },250); };
     publisher.onclose=()=>{ clearInterval(demoTimer); };
   }

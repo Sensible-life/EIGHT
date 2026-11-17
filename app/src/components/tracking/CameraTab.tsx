@@ -2,10 +2,11 @@ import { Text } from '../../ui/Typography';
 import { displayMessage } from '../../ui/displayMessage';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { AppState, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { AppState, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import PoseCameraView, { type PoseCameraHandle } from '../../../modules/pose-camera';
 import { DEFAULT_CONFIG, detectorJson } from '../../tracking/config';
+import { DEMO_CLIPS, demoFrame } from '../../tracking/demoMoves';
 import { IDLE, nextStart, secondsLeft, type StartEvent, type StartPhase } from '../../tracking/danceStart';
 import { unexploredTargets } from '../../tracking/insights';
 import { LEVEL_NAMES, label } from '../../tracking/phrases';
@@ -23,6 +24,10 @@ const DETECTOR = detectorJson();
 const PLAN_NOTE = { eights: '', tempo: "8 beats based on BPM", fixed: `No beat data · ${DEFAULT_CONFIG.aggregate.windows['8count_s']}-second intervals`, rolling: '' } as const;
 
 type Props = { store: LiveTrackingStore; playing: boolean; onPlay: () => void; server: string; onSave?: () => void; saved?: boolean; loop: { start: number; end: number } | null; saveRevision: number; missionTitle?: string; canRecord: boolean; recordCommand: number; onAgent: (proposal: DisplayProposal | null) => void; agentChoice: { id: string; accept: boolean } | null; onVideo: (event: { state: 'started' | 'saved' | 'error' | 'pending'; value: string }) => void };
+
+/** Browser only: what stands in for the phone camera. */
+type Input = { kind: 'camera' } | { kind: 'demo'; clip: string } | { kind: 'video'; uri: string };
+const WEB = Platform.OS === 'web';
 
 function statusText(view: TrackingView, phase: StartPhase, now: number, playing: boolean): string {
   if (view.error) return view.error;
@@ -51,6 +56,19 @@ export default function CameraTab({ store, playing, onPlay, server, onSave, save
   const [cameraSize, setCameraSize] = useState({ width: 1, height: 1 });
   const [details, setDetails] = useState(false);
   const [windowName, setWindowName] = useState<'8count' | 'session'>('8count');
+  const [input, setInput] = useState<Input>({ kind: 'camera' });
+  // Scripted figures follow the song: still while it is paused, moving on its beat while it plays.
+  const demo = useMemo(() => {
+    if (input.kind !== 'demo') return undefined;
+    const clip = input.clip;
+    return () => { const m = store.musicNow(); return demoFrame(clip, m.position, m.playing, store.beatSeconds()); };
+  }, [input, store]);
+  const pickVideo = async () => {
+    try {
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'] });
+      if (!r.canceled) setInput({ kind: 'video', uri: r.assets[0].uri });
+    } catch { /* picking was cancelled or is not available: keep the current input */ }
+  };
   const [phase, setPhase] = useState<StartPhase>(IDLE);
   const [now, setNow] = useState(() => Date.now());
   const phaseRef = useRef<StartPhase>(IDLE);
@@ -60,6 +78,11 @@ export default function CameraTab({ store, playing, onPlay, server, onSave, save
   useEffect(() => { onPlayRef.current = onPlay; }, [onPlay]);
 
   const toggleRecording = useCallback(() => {
+    if (WEB) { // no video file in the browser: the same events, so the movement data of the take is still recorded
+      if (videoState === 'idle' && canRecord) { onVideo({ state: 'pending', value: '' }); onVideo({ state: 'started', value: '' }); setVideoState('recording'); setVideoMessage('Recording movement (no video in the browser)'); }
+      else if (videoState === 'recording') { onVideo({ state: 'saved', value: '' }); setVideoState('idle'); setVideoMessage(''); }
+      return;
+    }
     if (videoState === 'idle' && canRecord) { const camera = cameraRef.current; if (!camera) { setVideoMessage('Wait for the camera to be ready.'); return; } setVideoState('starting'); setVideoMessage('Preparing camera…'); onVideo({ state: 'pending', value: '' }); void camera.startRecording().catch(e => { setVideoState('idle'); setVideoMessage(displayMessage(e)); onVideo({ state: 'error', value: displayMessage(e) }); }); }
     else if (videoState === 'recording') { setVideoState('stopping'); void cameraRef.current?.stopRecording().catch(e => { setVideoState('idle'); setVideoMessage(displayMessage(e)); onVideo({ state: 'error', value: displayMessage(e) }); }); }
   }, [videoState, canRecord, onVideo]);
@@ -81,6 +104,7 @@ export default function CameraTab({ store, playing, onPlay, server, onSave, save
 
   useFocusEffect(useCallback(() => {
     if (!PoseCameraView) return;
+    if (WEB) { setPermission('granted'); return; } // the browser asks by itself
     let alive = true;
     void ImagePicker.getCameraPermissionsAsync().then(r => { if (alive) setPermission(r.granted ? 'granted' : 'denied'); }).catch(() => { if (alive) setPermission('denied'); });
     return () => { alive = false; };
@@ -90,7 +114,7 @@ export default function CameraTab({ store, playing, onPlay, server, onSave, save
   useEffect(() => {
     if (!PoseCameraView) return;
     let alive = true;
-    const check = () => ImagePicker.getCameraPermissionsAsync()
+    const check = () => WEB ? Promise.resolve() : ImagePicker.getCameraPermissionsAsync()
       .then(r => { if (alive) setPermission(r.granted ? 'granted' : 'denied'); })
       .catch(() => { if (alive) setPermission('denied'); });
     void check();
@@ -139,6 +163,7 @@ export default function CameraTab({ store, playing, onPlay, server, onSave, save
       <View style={s.cameraRow}><View style={s.camera} onLayout={e => setCameraSize(e.nativeEvent.layout)}>
         {permission === 'granted' && (
           <PoseCameraView ref={cameraRef} style={StyleSheet.absoluteFill} active model="lite" detectorJson={DETECTOR}
+            {...(WEB && { demo, videoUri: input.kind === 'video' ? input.uri : undefined })}
             onRecording={e => { const event = e.nativeEvent; onVideo(event); if (event.state === 'started') { setVideoState('recording'); setVideoMessage("Recording video"); } else { setVideoState('idle'); setVideoMessage(event.state === 'error' ? displayMessage(event.value) : "Recording ready to review."); } }}
             onPose={e => store.handlePose(e.nativeEvent)} onEngine={e => store.handleEngine(e.nativeEvent)} onError={e => store.handleError(displayMessage(e.nativeEvent.message))} />
         )}
@@ -153,6 +178,20 @@ export default function CameraTab({ store, playing, onPlay, server, onSave, save
         }}>{corners.map((point, i) => <View key={i} style={{ position: 'absolute', left: `${point.x * 100}%`, top: `${point.y * 100}%`, width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF', alignItems: 'center' }}><Text>{i + 1}</Text></View>)}</Pressable>}
       </View>
       <View style={s.heatFigure}>{usage ? <BodyHeatmap shares={fromSegments(usage.segments)} underused={usage.underused} dim={dim} /> : <Text style={s.small}>Movement appears when tracking starts.</Text>}</View></View>
+      {WEB && (
+        <View style={s.inputs}>
+          <Text style={s.small}>Demo input · browser only</Text>
+          <View style={s.chips}>
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: input.kind === 'camera' }} onPress={() => setInput({ kind: 'camera' })} style={[s.chip, input.kind === 'camera' && s.chipOn]}><Text style={[s.chipText, input.kind === 'camera' && s.chipTextOn]}>Webcam</Text></Pressable>
+            {DEMO_CLIPS.map(c => {
+              const on = input.kind === 'demo' && input.clip === c.id;
+              return <Pressable key={c.id} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setInput({ kind: 'demo', clip: c.id })} style={[s.chip, on && s.chipOn]}><Text style={[s.chipText, on && s.chipTextOn]}>{c.label}</Text></Pressable>;
+            })}
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: input.kind === 'video' }} onPress={() => void pickVideo()} style={[s.chip, input.kind === 'video' && s.chipOn]}><Text style={[s.chipText, input.kind === 'video' && s.chipTextOn]}>Video file…</Text></Pressable>
+          </View>
+          {input.kind === 'demo' && <Text style={s.small}>Scripted moves follow the music: start recording, then play.</Text>}
+        </View>
+      )}
       <Text style={s.status} accessibilityLiveRegion="polite">{statusText(view, phase, now, playing)}</Text>
       <View style={s.head}>
         <View style={s.switch}>
@@ -229,6 +268,12 @@ const s = StyleSheet.create({
   dim: { opacity: 0.45 },
   cue: { color: C.accent, fontSize: 15, lineHeight: 22, fontFamily: 'SpaceGrotesk_600SemiBold' },
   actions: { flexDirection: 'row', gap: 10 },
+  inputs: { gap: 8, padding: 12, borderRadius: 16, backgroundColor: C.card },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { paddingHorizontal: 12, minHeight: 36, borderRadius: 18, justifyContent: 'center', backgroundColor: C.cardHi },
+  chipOn: { backgroundColor: C.accent },
+  chipText: { color: C.sub, fontSize: 12 },
+  chipTextOn: { color: '#FFFFFF', fontFamily: 'SpaceGrotesk_600SemiBold' },
   primary: { flex: 1, minHeight: 48, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFFFFF', fontFamily: 'SpaceGrotesk_600SemiBold' },
   secondary: { flex: 1, minHeight: 48, borderRadius: 14, backgroundColor: C.cardHi, alignItems: 'center', justifyContent: 'center' },
