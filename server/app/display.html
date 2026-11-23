@@ -3,64 +3,174 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Eight · Creative display</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{color-scheme:dark;--bg:#130f19;--muted:#b9a9c1;--pink:#f078eb;--line:#ffffff19;--surface:#ffffff09}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:#fbf7fc;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{background:radial-gradient(ellipse 65% 60% at 27% 42%,#40204a 0%,transparent 72%),radial-gradient(ellipse 50% 50% at 85% 12%,#252146 0%,transparent 70%),var(--bg)}
-.shell{max-width:1500px;margin:auto;padding:clamp(20px,3.4vw,52px);min-height:100vh;display:flex;flex-direction:column;gap:clamp(24px,4vh,48px)}
-header{display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{font-size:22px;letter-spacing:-1px;font-weight:700}.brand span{color:#ed8af0}.top-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.pill{border:1px solid var(--line);background:#ffffff08;border-radius:99px;padding:8px 12px;color:#d8ccdf;font-size:11px;letter-spacing:.05em}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#bc9cc5;margin-right:7px}.dot.live{background:#bdedb5;box-shadow:0 0 12px #bdedb5}
-main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);gap:clamp(24px,5vw,80px);align-items:center}.visual{text-align:center;position:relative}.eyebrow{color:#d492d8;letter-spacing:.16em;text-transform:uppercase;font-size:11px;font-weight:700}.visual h1{font-size:clamp(29px,4.2vw,58px);letter-spacing:-.055em;line-height:1.06;margin:14px 0 8px}.sub{color:var(--muted);font-size:14px;line-height:1.55}.figure{width:min(70%,390px);min-width:210px;margin:4px auto 0;display:block;overflow:visible;filter:drop-shadow(0 18px 55px #cb48dd25)}.figure ellipse{transition:rx 1s ease,ry 1s ease,opacity 1s ease}.orb{animation:float 4s ease-in-out infinite;transform-origin:center}.orbit{animation:rotate 30s linear infinite;transform-origin:center}@keyframes float{50%{transform:translateY(-9px)}}@keyframes rotate{to{transform:rotate(360deg)}}
-.body-key{display:flex;justify-content:center;gap:34px;margin-top:-5px}.body-key strong{display:block;font-size:24px;font-weight:600;letter-spacing:-.04em}.body-key span{color:var(--muted);font-size:11px}.note{color:#a99aaf;font-size:11px;line-height:1.5;margin:10px auto 0;max-width:370px}
-.nudge{position:absolute;top:32%;left:65%;z-index:1;background:#f8eafa;color:#301d36;border-radius:17px 17px 17px 4px;padding:10px 14px;font-size:12px;font-weight:600;box-shadow:0 8px 28px #13091e66;white-space:nowrap}
-.dashboard{display:flex;flex-direction:column;gap:14px}.card{border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,#ffffff0e,#ffffff05);padding:clamp(18px,2vw,26px)}.card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.card h2{font-size:16px;letter-spacing:-.02em;margin:5px 0 0}.micro{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#c99ccc}.info{font-size:11px;color:var(--muted)}.heat-layout{display:flex;align-items:center;gap:22px;margin-top:18px}.heat{width:min(47%,180px);flex:none;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);gap:3px}.cell{background:#302538;border-radius:3px;transition:background .35s}.heat-copy{font-size:13px;line-height:1.55;color:#d1c3d6}.heat-copy small{color:#a99aaf}.legend{height:4px;border-radius:4px;background:linear-gradient(90deg,#44324e,#a240be,#ef8ee6);margin-top:12px}
-.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;min-height:34px}.tag{border:1px solid var(--line);border-radius:99px;padding:7px 12px;font-size:13px;background:#ffffff0a}.tag small{color:var(--muted);margin-right:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
-.guide{min-height:180px;position:relative;overflow:hidden}.guide:before{content:"";position:absolute;width:180px;height:180px;right:-60px;top:-80px;background:#cf48db;filter:blur(80px);opacity:.24;pointer-events:none}.guide-content{position:relative}.guide-label{display:flex;justify-content:space-between;gap:12px;align-items:center}.guide-title{font-size:clamp(18px,2.1vw,25px);line-height:1.22;letter-spacing:-.03em;font-weight:650;margin:14px 0 6px}.guide-desc{color:#cbbdd1;font-size:13px;line-height:1.5;max-width:430px}.actions{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}button{font:inherit;cursor:pointer}.button{border:0;border-radius:99px;padding:10px 17px;background:#f4eaf6;color:#211727;font-size:12px;font-weight:700}.button.secondary{background:#ffffff12;color:#ebdded;border:1px solid #ffffff20}.button:focus-visible,.toggle:focus-visible{outline:2px solid #f3a6ef;outline-offset:3px}.toggle{border:0;background:none;padding:8px 0;color:#d5bcda;font-size:11px}.foot{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;color:#9f90a8;font-size:11px;line-height:1.5}.foot a{color:#e4c2e7;text-decoration:none}.hidden{display:none!important}
-.answer{display:flex;align-items:center;gap:14px;margin-top:16px;font-size:clamp(15px,1.6vw,20px);font-weight:650;color:#f8eafa}.answer svg{width:clamp(44px,4.5vw,60px);height:clamp(44px,4.5vw,60px);flex:none;transform:rotate(-90deg)}.answer .track{stroke:#ffffff22}.answer .fill{stroke:#f078eb;transition:stroke-dashoffset .1s linear}
-.notice{position:fixed;left:50%;top:clamp(70px,12vh,120px);transform:translateX(-50%);z-index:5;background:#1d1626ee;border:1px solid #ffffff2a;border-radius:22px;padding:18px 26px;text-align:center;font-size:clamp(20px,2.6vw,34px);font-weight:650;letter-spacing:-.02em;box-shadow:0 18px 50px #0008;max-width:calc(100vw - 32px)}.notice small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:6px;letter-spacing:0}.bar{height:6px;border-radius:6px;background:#ffffff1a;margin-top:12px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:#f078eb;transition:width .2s}
-.debug-toggle{border:1px solid var(--line);background:#ffffff08;border-radius:99px;padding:8px 12px;color:#d8ccdf;font-size:11px;letter-spacing:.05em}
-.debug{position:fixed;right:16px;bottom:16px;z-index:6;width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:#140f1cf2;border:1px solid #ffffff2a;border-radius:18px;padding:14px;font-size:12px;line-height:1.5;box-shadow:0 18px 50px #000a;transition:transform .25s}.debug.closed{transform:translateX(calc(100vw + 40px));pointer-events:none}.debug.dragging{transition:none;user-select:none}
-.drag-handle{cursor:grab;touch-action:none;margin:-14px -14px 0;padding:12px 14px 8px;border-radius:18px 18px 0 0}.drag-handle:active{cursor:grabbing}.drag-handle:focus-visible{outline:2px solid #f3a6ef;outline-offset:-2px}
-.stage{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.debug dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:10px 0}.debug dt{color:var(--muted)}.debug dd{margin:0;font-variant-numeric:tabular-nums;word-break:break-word}.debug input{font:inherit;background:#ffffff12;border:1px solid var(--line);border-radius:8px;color:inherit;padding:4px 8px}.debug input[type=number]{width:80px}.debug a{color:#e4c2e7}
-@media(max-width:760px){main{grid-template-columns:1fr;gap:24px}.shell{padding:20px}.figure{width:min(60%,280px)}.visual h1{font-size:32px}.dashboard{padding-bottom:14px}.heat{width:44%}.foot{flex-direction:column;align-items:flex-start}.brand{font-size:19px}}
-@media(prefers-reduced-motion:reduce){.orb,.orbit{animation:none}.figure ellipse,.cell,.debug{transition:none}}
+/* ===== Design values (every value explained: docs/DISPLAY_DESIGN.md) ======================================
+   Change a value here, save, and reload the page (no server restart). Sizes and positions are px of the
+   1280×720 design frame, as read in Figma; the page scales them to the screen. Colors are hex (#rrggbbaa for
+   transparency). */
+:root{
+  --font:Manrope,Pretendard,system-ui,-apple-system,"Segoe UI",sans-serif;
+  /* background: a glow from the middle out to the edges */
+  --bg-center:#282244;--bg-inner:#221d3d;--bg-outer:#1e1936;--bg-edge:#1a1730;
+  /* the 8: each limb's corner (arms on top, legs below, the dancer's left on the left) is pink when that limb moved
+     a lot lately and blue when it barely moved; an even share (25 %) is the middle color, and a share this
+     far above or below it (0.15 = 40 % or 10 %) is fully pink or blue. While nobody is tracked: pink on top, blue below. */
+  --eight-used:#cdacd9;--eight-middle:#8e88d8;--eight-unused:#4c61d5;--eight-full-at:.15;
+  /* how quickly the colors follow the dancer: --eight-now mixes the last 4 s (1) with the last 30 s (0), so higher is
+     faster but jumpier; --eight-fade is how long (seconds) one color takes to turn into the next */
+  --eight-now:.7;--eight-fade:.6;
+  /* its shadow, and how faint it is while nobody is tracked */
+  --eight-shadow-color:#8f8ca699;--eight-shadow-y:4;--eight-shadow-blur:4;
+  --eight-idle-opacity:.5;
+  /* labels (L): text size and color of the part name, the movement, the details, and "less used" */
+  --label-name-size:22;--label-name-color:#cdc6ec;
+  --label-kind-size:46;--label-kind-color:#ffffff;--label-kind-hold-color:#cfc9ea;--label-kind-unseen-color:#8f89b3;
+  --label-detail-size:20;--label-detail-color:#ddd7f6;
+  --label-lack-size:20;--label-lack-color:#ffb3c7;
+  --label-line-color:#cfc9ecb3;--label-line-width:1.4;--label-dot-color:#f1edff;--label-dot-size:3.5;
+  /* label positions: the dot on the 8 (x y), then where the line bends (x y); the text sits on the bent line */
+  --label-arm-l:513 178 420 124;--label-arm-r:766 178 860 124;--label-torso:705 352 880 352;
+  --label-leg-l:497 560 405 624;--label-leg-r:787 556 880 624;
+  /* text lines (y of each baseline): arms name / movement / details; legs the same; torso adds space and less used */
+  --label-rows-arms:62 110 152;--label-rows-legs:564 610 652;--label-rows-torso:292 338 380 408 436;
+  /* the character: where it stands (center x, feet y), its width, colors and glow */
+  --buddy-x:331;--buddy-y:517;--buddy-width:46;
+  --buddy-top:#c2cdfb;--buddy-middle:#cbcdfa;--buddy-bottom:#e4c6f3;--buddy-glow:#e9e4ff80;
+  /* before it asks it circles the 8: orbit center x y, radius x y, tilt (degrees), seconds per turn; it starts to
+     show when the guide is this far (0..1) towards asking, and is clearest just before it asks */
+  --orbit:640 380 330 74 -10 7;--orbit-from:.35;
+  /* its bubble: gap above the character, text, width, padding, colors and tail */
+  --bubble-gap:31;--bubble-font-size:19;--bubble-max-width:282;--bubble-padding-y:14;--bubble-padding-x:28;
+  --bubble-color-1:#aaa6d6;--bubble-color-2:#a2b2de;--bubble-color-3:#c6a3cf;--bubble-text-color:#ffffff;
+  --bubble-tail-width:18;--bubble-tail-height:12; /* the tail shares the bubble's gradient */
+  /* the "…" bubble while it asks: size, its three dots, and the white badge */
+  --ask-width:92;--ask-height:40;--ask-dot-size:9;--ask-badge-size:16;
+  /* notices (stand still, step into view, camera problems): distance from the top, text sizes, background */
+  --notice-y:12;--notice-font-size:24;--notice-sub-size:14;--notice-bg:#2a2450dd;
+  /* controls bar and debug view */
+  --ink:#f7f4ff;--muted:#bcb5dc;--line:#ffffff22;--panel:#1f1a38f2;
+  --px:calc(100cqw / 1280); /* one px of the design frame, on screen */
+}
+/* ========================================================================================================= */
+:root{color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{overflow:hidden;display:grid;place-items:center;color:var(--ink);font-family:var(--font);background:var(--bg-edge) radial-gradient(circle at 50% 46%,var(--bg-center) 0,var(--bg-inner) 15vmax,var(--bg-outer) 27vmax,var(--bg-edge) 44vmax) no-repeat}
+body.idle{cursor:none}
+/* the scene is drawn on the 1280×720 frame and scales with the window */
+.stage{position:relative;width:min(100vw,177.78vh);aspect-ratio:16/9;container-type:inline-size}
+.scene{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.eight{filter:drop-shadow(0 calc(var(--eight-shadow-y) * var(--px)) calc(var(--eight-shadow-blur) * var(--px)) var(--eight-shadow-color));transition:opacity .8s ease}.stage.offline .eight{opacity:var(--eight-idle-opacity)}
+.eight stop{transition:stop-color calc(var(--eight-fade) * 1s) ease}
+/* the 8's labels: each part's name and what it is doing, big enough to read from where the dancer stands */
+.labels{opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}.labels.on{opacity:1;visibility:visible}
+.labels .name{font-size:calc(var(--label-name-size) * 1px);font-weight:600;fill:var(--label-name-color);letter-spacing:.01em}
+.labels .kind{font-size:calc(var(--label-kind-size) * 1px);font-weight:800;fill:var(--label-kind-color);letter-spacing:-.01em}
+.labels .detail,.labels .space{font-size:calc(var(--label-detail-size) * 1px);font-weight:600;fill:var(--label-detail-color)}
+.labels .lack{font-size:calc(var(--label-lack-size) * 1px);font-weight:700;fill:var(--label-lack-color)}
+.labels .leader{fill:none;stroke:var(--label-line-color);stroke-width:var(--label-line-width)}.labels .dot{fill:var(--label-dot-color)}
+.part.unseen .kind{fill:var(--label-kind-unseen-color)}.part.hold .kind{fill:var(--label-kind-hold-color)}.part.lacking .name{fill:var(--label-lack-color)}
+.part.lacking .dot{fill:var(--label-lack-color);transform-box:fill-box;transform-origin:center;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.9);opacity:.6}}
+/* the character and its bubble, left of the 8 */
+.guide{position:absolute;left:calc(var(--buddy-x) / 1280 * 100%);bottom:calc((720 - var(--buddy-y)) / 720 * 100%);display:flex;flex-direction:column;align-items:center;gap:calc(var(--bubble-gap) * var(--px));opacity:0;transform:translate(-50%,1.2cqw);transition:opacity .45s ease,transform .45s ease;pointer-events:none}
+.guide.show{opacity:1;transform:translate(-50%,0)}
+/* before it asks: the character alone, circling the 8 (its place on the orbit is set per frame), clearer as the question nears */
+.guide.orbit{transition:opacity .8s ease;z-index:2}.guide.orbit.behind{z-index:0}.guide.orbit .bubble{visibility:hidden}
+/* then it glides to its spot, and the bubble pops up once it is there */
+.guide.land{transition:opacity .45s ease,transform .7s cubic-bezier(.3,.7,.3,1)}.guide.land .bubble{animation:pop .35s ease .55s both}
+@keyframes pop{from{opacity:0;transform:scale(.6) translateY(.6cqw)}to{opacity:1;transform:none}}
+.scene{z-index:1}.guide{z-index:2}.notice{z-index:3}
+.bubble{position:relative;display:grid;place-items:center;min-height:calc(var(--ask-height) * var(--px));max-width:calc(var(--bubble-max-width) * var(--px));padding:calc(var(--bubble-padding-y) * var(--px)) calc(var(--bubble-padding-x) * var(--px));isolation:isolate;color:var(--bubble-text-color);font-size:calc(var(--bubble-font-size) * var(--px));font-weight:600;line-height:1.3;text-align:center;text-wrap:balance;text-shadow:0 1px .5cqw #5a4b8a66}
+/* the bubble and its tail are one outline (drawn to the bubble's size), so the gradient and the shadow run through both */
+.bubble-bg{position:absolute;left:0;top:0;z-index:-1;overflow:visible;pointer-events:none;filter:drop-shadow(0 .5cqw 1cqw #0d0a2066)}
+.bubble.ask{width:calc(var(--ask-width) * var(--px));height:calc(var(--ask-height) * var(--px));padding:0}.bubble.ask .text,.bubble:not(.ask) .dots,.bubble:not(.ask) .badge{display:none}
+.dots{display:flex;gap:calc(var(--ask-dot-size) * var(--px))}.dots i{width:calc(var(--ask-dot-size) * var(--px));height:calc(var(--ask-dot-size) * var(--px));border-radius:50%;background:#fff;animation:typing 1.2s ease-in-out infinite}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes typing{0%,60%,100%{transform:none}30%{transform:translateY(-.3cqw)}}
+.dots.holding i{animation:none;opacity:.3;transition:opacity .2s,transform .2s}.dots.holding i.on{opacity:1;transform:scale(1.35)} /* one dot per second of the O */
+.badge{position:absolute;right:-.35cqw;top:-.45cqw;width:calc(var(--ask-badge-size) * var(--px));height:calc(var(--ask-badge-size) * var(--px));border-radius:50%;background:#fff;box-shadow:0 0 .8cqw #fff9}
+.buddy{width:calc(var(--buddy-width) * var(--px));height:auto;overflow:visible;filter:drop-shadow(0 .4cqw .8cqw var(--buddy-glow));animation:bob 3.2s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-.35cqw)}}
+/* notices: calibration, step into view, camera problems */
+.notice{position:absolute;left:50%;top:calc(var(--notice-y) / 720 * 100%);transform:translateX(-50%);max-width:34cqw;padding:.8cqw 2cqw;border-radius:1.8cqw;background:var(--notice-bg);border:1px solid #ffffff26;box-shadow:0 1cqw 3cqw #0007;text-align:center;font-size:calc(var(--notice-font-size) * var(--px));font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.notice small{display:block;margin-top:.4cqw;font-size:calc(var(--notice-sub-size) * var(--px));font-weight:500;color:var(--muted);letter-spacing:0}
+.nbar{height:.4cqw;border-radius:1cqw;background:#ffffff1f;margin-top:.8cqw;overflow:hidden}.nbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--eight-used),var(--eight-unused));transition:width .2s}
+/* controls: appear when the mouse moves, hide after a moment */
+.bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:7;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;max-width:calc(100vw - 32px);padding:6px;border-radius:24px;background:#211c3ce6;border:1px solid var(--line);box-shadow:0 10px 30px #0007;font-size:13px;transition:opacity .4s}
+body.idle .bar{opacity:0;pointer-events:none}
+/* the webcam is recording for the phone: always shown, even when the controls hide */
+.rec{position:fixed;top:14px;left:16px;z-index:9;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:700;color:#ff687e;border:1px solid #ff687e;background:#451c2cee;max-width:calc(100vw - 32px)}
+.status{display:flex;align-items:center;gap:7px;padding:0 10px;color:var(--muted);white-space:nowrap}.sdot{width:8px;height:8px;border-radius:50%;background:#8f88b5}.sdot.live{background:#b9f0c4;box-shadow:0 0 10px #b9f0c4}
+.chip{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--line);background:#ffffff0d;color:var(--ink);border-radius:999px;padding:7px 13px;text-decoration:none}.chip[aria-pressed=true]{background:#b7a6f02e;border-color:#b7a6f066}.chip.primary{background:#e9e4ff;color:#221c3d;border-color:transparent}
+.chip:focus-visible,.drag-handle:focus-visible{outline:2px solid #cbb9ff;outline-offset:2px}
+.hidden{display:none!important}
+/* debug view */
+.debug{position:fixed;right:16px;top:16px;z-index:8;width:min(420px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:var(--panel);border:1px solid #ffffff26;border-radius:16px;padding:12px 14px;font-size:12.5px;line-height:1.5;box-shadow:0 18px 50px #000a;transition:transform .25s}
+.debug.closed{transform:translateX(calc(100vw + 40px));pointer-events:none}.debug.dragging{transition:none;user-select:none}
+.drag-handle{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:grab;touch-action:none;margin:-12px -14px 0;padding:10px 14px 8px;border-radius:16px 16px 0 0}.drag-handle:active{cursor:grabbing}
+.micro{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#cdb8f0;font-weight:700}.info{font-size:11.5px;color:var(--muted)}
+.cam{position:relative;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:4/3;margin-top:8px}.cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.debug dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:10px 0}.debug dt{color:var(--muted)}.debug dd{margin:0;font-variant-numeric:tabular-nums;word-break:break-word}
+.debug input{font:inherit;background:#ffffff12;border:1px solid var(--line);border-radius:8px;color:inherit;padding:4px 8px}.debug input[type=number]{width:80px}.debug a{color:#d9c8ff}
+.debug .link{border:0;background:none;padding:0;font:inherit;color:#d9c8ff;cursor:pointer;text-decoration:underline}
+@media(prefers-reduced-motion:reduce){.dots i,.buddy,.part.lacking .dot{animation:none}.guide,.labels,.eight,.debug,.bar{transition:none}}
 </style>
 </head>
 <body>
-<div class="shell">
-<header><div class="brand">Eight <span>8</span></div><div class="top-right"><div id="record-indicator" class="pill hidden" role="status" style="color:#ff687e;border-color:#ff687e;background:#451c2c">● REC</div><div id="mode" class="pill">LIVE SPACE</div><div class="pill"><span id="dot" class="dot"></span><span id="status">Connecting</span></div><button id="lang" class="debug-toggle" type="button" aria-label="Language">EN / KO</button><button id="debug-toggle" class="debug-toggle" type="button" aria-pressed="false">Debug</button></div></header>
-<main>
-  <section class="visual" aria-label="Movement visualization"><div class="eyebrow" data-i18n="eyebrow">Movement in the moment</div><h1 data-i18n-html="title">Your movement,<br>in shape.</h1><div class="sub" data-i18n="sub">An abstract view of your practice.</div>
-    <div id="nudge" class="nudge hidden" data-i18n="nudge">Need some help?</div>
-    <svg class="figure" viewBox="0 0 320 390" role="img" aria-label="Figure eight responds to upper and lower body movement">
-      <defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2a4fb"/><stop offset=".5" stop-color="#c65eea"/><stop offset="1" stop-color="#6b78f6"/></linearGradient><radialGradient id="glow"><stop stop-color="#f9c1ff" stop-opacity=".7"/><stop offset="1" stop-color="#f9c1ff" stop-opacity="0"/></radialGradient></defs>
-      <circle cx="160" cy="190" r="138" fill="url(#glow)" opacity=".15"/><g class="orbit" opacity=".35" fill="none" stroke="#d9c9ed" stroke-width=".8"><ellipse cx="160" cy="195" rx="150" ry="43" transform="rotate(-32 160 195)"/><ellipse cx="160" cy="195" rx="148" ry="49" transform="rotate(34 160 195)"/></g>
-      <ellipse id="upper-ring" cx="160" cy="122" rx="67" ry="65" fill="none" stroke="url(#ring)" stroke-width="24" stroke-linecap="round" opacity=".8"/><ellipse id="lower-ring" cx="160" cy="254" rx="75" ry="74" fill="none" stroke="url(#ring)" stroke-width="24" stroke-linecap="round" opacity=".8"/>
-      <g class="orb"><circle cx="225" cy="80" r="9" fill="#f6c4fb"/><circle cx="223" cy="77" r="2" fill="#fff"/></g>
+<div id="stage" class="stage offline">
+  <svg class="scene eight" viewBox="0 0 1280 720" role="img" aria-label="Figure eight">
+    <defs>
+      <!-- each limb's color sits at its corner: top to bottom on each side, then the right side faded in across -->
+      <linearGradient id="eight-left" gradientUnits="userSpaceOnUse" x1="0" y1="104" x2="0" y2="651"><stop id="c-arm_l" offset="0" style="stop-color:var(--eight-used)"/><stop id="c-leg_l" offset="1" style="stop-color:var(--eight-unused)"/></linearGradient>
+      <linearGradient id="eight-right" gradientUnits="userSpaceOnUse" x1="0" y1="104" x2="0" y2="651"><stop id="c-arm_r" offset="0" style="stop-color:var(--eight-used)"/><stop id="c-leg_r" offset="1" style="stop-color:var(--eight-unused)"/></linearGradient>
+      <linearGradient id="eight-across" gradientUnits="userSpaceOnUse" x1="459" y1="0" x2="820" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+      <mask id="eight-right-side" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="1280" height="720"><rect width="1280" height="720" fill="url(#eight-across)"/></mask>
+      <!-- traced from the design (default.png); a shape exported from Figma can replace this path -->
+      <clipPath id="eight-shape"><path clip-rule="evenodd" d="M634.7 104.4C633 104.4 631.4 104.5 629.7 104.6C628 104.6 626.3 104.6 624.7 104.7C623 104.8 621.4 104.9 619.7 105.1C618 105.3 616.4 105.5 614.7 105.6C613.1 105.8 611.4 106 609.8 106.2C608.1 106.4 606.5 106.6 604.8 106.9C603.2 107.1 601.5 107.4 599.9 107.7C598.2 108 596.6 108.4 595 108.7C593.4 109.1 591.7 109.4 590.1 109.8C588.5 110.2 586.9 110.6 585.3 111.1C583.7 111.6 582.1 112.1 580.5 112.5C578.9 113 577.3 113.4 575.7 114C574.1 114.5 572.6 115.1 571 115.7C569.5 116.3 567.9 116.9 566.4 117.5C564.9 118.2 563.3 118.8 561.8 119.5C560.3 120.2 558.8 120.9 557.3 121.6C555.8 122.4 554.3 123.1 552.8 123.8C551.3 124.6 549.9 125.5 548.5 126.3C547 127.1 545.6 128 544.2 128.9C542.8 129.8 541.3 130.7 540 131.6C538.6 132.5 537.2 133.5 535.9 134.5C534.5 135.4 533.2 136.4 531.9 137.5C530.6 138.5 529.3 139.6 528 140.7C526.7 141.7 525.5 142.9 524.3 144C523.1 145.1 521.9 146.3 520.7 147.5C519.5 148.7 518.4 149.9 517.2 151.1C516.1 152.3 515 153.5 513.9 154.8C512.8 156.1 511.7 157.4 510.7 158.7C509.7 160 508.7 161.3 507.7 162.7C506.7 164 505.8 165.4 504.9 166.8C504 168.2 503.2 169.7 502.3 171.1C501.5 172.6 500.7 174 499.9 175.5C499.2 177 498.5 178.5 497.8 180C497.1 181.6 496.4 183.1 495.8 184.6C495.2 186.1 494.6 187.7 494 189.3C493.5 190.8 493 192.4 492.5 194C492 195.6 491.6 197.2 491.2 198.8C490.7 200.5 490.3 202.1 490 203.7C489.6 205.3 489.3 207 489.1 208.6C488.8 210.2 488.6 211.9 488.4 213.6C488.2 215.2 487.9 216.9 487.7 218.5C487.6 220.2 487.6 221.9 487.5 223.5C487.4 225.2 487.3 226.8 487.2 228.5C487.1 230.2 487.1 231.8 487.1 233.5C487 235.2 487.1 236.9 487.1 238.5C487.1 240.2 487 241.9 487.1 243.5C487.1 245.2 487.2 246.9 487.3 248.5C487.4 250.2 487.5 251.9 487.6 253.5C487.7 255.2 487.8 256.9 488 258.5C488.1 260.2 488.4 261.8 488.6 263.5C488.9 265.1 489.2 266.8 489.5 268.4C489.8 270 490.1 271.7 490.4 273.3C490.8 274.9 491.2 276.6 491.6 278.2C492 279.8 492.5 281.4 493 283C493.5 284.5 494 286.1 494.6 287.7C495.2 289.2 495.8 290.8 496.5 292.3C497.2 293.8 497.9 295.3 498.7 296.8C499.5 298.3 500.3 299.7 501.2 301.1C502 302.6 502.9 304 503.8 305.4C504.7 306.8 505.6 308.2 506.5 309.6C507.5 311 508.5 312.3 509.5 313.6C510.6 314.9 511.6 316.2 512.7 317.4C513.8 318.7 515 319.9 516.2 321.1C517.3 322.3 518.5 323.5 519.7 324.7C520.9 325.8 522.2 326.9 523.5 327.9C524.8 329 526.1 330 527.5 330.9C528.8 331.9 530.2 332.9 531.6 333.8C532.9 334.8 534.4 335.6 535.8 336.5C537.2 337.3 538.7 338.1 540.2 338.9C541.6 339.7 543.1 340.5 544.6 341.2C546.1 341.9 547.7 342.5 549.2 343.2C550.7 343.8 553 344 553.8 345C554.7 346.1 554.7 348.2 554.1 349.4C553.6 350.7 551.8 351.8 550.4 352.7C549 353.6 547.4 354.2 545.9 354.8C544.3 355.4 542.7 355.9 541.1 356.4C539.6 356.9 538 357.4 536.4 358C534.9 358.6 533.3 359.2 531.8 359.9C530.3 360.6 528.8 361.4 527.3 362.1C525.9 362.9 524.4 363.8 523 364.6C521.6 365.5 520.1 366.3 518.7 367.2C517.3 368.1 515.9 369 514.6 370C513.2 371 511.8 372 510.5 373C509.2 373.9 507.8 374.9 506.5 376C505.2 377 503.9 378.1 502.7 379.2C501.4 380.3 500.2 381.4 499 382.5C497.8 383.7 496.7 384.9 495.5 386.2C494.4 387.4 493.3 388.7 492.3 390C491.2 391.2 490.1 392.5 489 393.8C488 395.1 487.1 396.5 486.1 397.9C485.2 399.2 484.3 400.7 483.4 402.1C482.5 403.5 481.6 404.8 480.7 406.3C479.9 407.7 479.1 409.2 478.3 410.7C477.5 412.1 476.6 413.5 475.8 415C475.1 416.5 474.4 418 473.7 419.5C473 421.1 472.3 422.6 471.6 424.1C470.9 425.6 470.3 427.1 469.7 428.6C469 430.2 468.4 431.7 467.8 433.3C467.2 434.8 466.6 436.4 466.1 438C465.6 439.6 465.1 441.1 464.6 442.7C464.1 444.3 463.6 445.9 463.1 447.5C462.7 449.1 462.2 450.7 461.9 452.3C461.5 454 461.1 455.6 460.8 457.2C460.5 458.9 460.2 460.5 459.9 462.1C459.7 463.8 459.6 465.5 459.5 467.1C459.3 468.8 459 470.4 458.9 472.1C458.8 473.8 458.7 475.4 458.7 477.1C458.7 478.8 458.7 480.4 458.7 482.1C458.7 483.8 458.7 485.4 458.7 487.1C458.7 488.8 458.7 490.5 458.7 492.1C458.7 493.8 458.8 495.5 458.9 497.1C459 498.8 459.2 500.4 459.3 502.1C459.4 503.8 459.5 505.4 459.7 507.1C459.8 508.8 460 510.4 460.2 512.1C460.4 513.7 460.6 515.4 460.8 517C461.1 518.7 461.3 520.3 461.6 522C461.9 523.6 462.2 525.3 462.6 526.9C462.9 528.5 463.2 530.2 463.6 531.8C463.9 533.4 464.3 535 464.7 536.7C465 538.3 465.4 539.9 465.9 541.5C466.3 543.1 466.9 544.7 467.4 546.3C467.8 547.9 468.2 549.5 468.8 551.1C469.3 552.7 469.9 554.2 470.5 555.8C471.1 557.3 471.7 558.9 472.3 560.4C473 561.9 473.7 563.5 474.4 565C475.1 566.5 475.7 568 476.4 569.5C477.2 571 478 572.5 478.8 573.9C479.7 575.4 480.6 576.8 481.5 578.2C482.4 579.6 483.3 581 484.3 582.3C485.2 583.7 486.2 585 487.3 586.3C488.3 587.6 489.4 588.9 490.4 590.2C491.5 591.5 492.5 592.8 493.7 594C494.8 595.3 496 596.4 497.1 597.6C498.3 598.8 499.5 600 500.7 601.2C501.9 602.3 503 603.5 504.3 604.7C505.5 605.8 506.8 606.9 508.1 607.9C509.4 609 510.7 610 512 611C513.3 612 514.6 613.1 516 614.1C517.3 615.1 518.7 616 520.1 617C521.4 617.9 522.9 618.8 524.3 619.6C525.7 620.5 527.1 621.4 528.6 622.3C530 623.1 531.4 623.9 532.9 624.8C534.3 625.6 535.8 626.3 537.3 627.1C538.8 627.8 540.3 628.5 541.8 629.2C543.3 630 544.8 630.7 546.4 631.3C547.9 632 549.4 632.7 550.9 633.3C552.5 633.9 554 634.5 555.6 635.1C557.2 635.6 558.8 636.2 560.3 636.7C561.9 637.2 563.5 637.8 565.1 638.3C566.6 638.8 568.3 639.2 569.9 639.7C571.5 640.1 573.1 640.6 574.7 641.1C576.3 641.5 577.9 641.9 579.5 642.3C581.1 642.7 582.8 643 584.4 643.4C586 643.7 587.7 644 589.3 644.4C590.9 644.7 592.6 645 594.2 645.3C595.9 645.5 597.5 645.7 599.2 646C600.8 646.2 602.5 646.4 604.1 646.6C605.8 646.9 607.4 647.1 609.1 647.3C610.7 647.4 612.4 647.5 614.1 647.6C615.7 647.8 617.4 648.1 619 648.2C620.7 648.3 622.4 648.4 624 648.4C625.7 648.5 627.4 648.6 629 648.6C630.7 648.7 632.4 648.8 634 648.8C635.7 648.8 637.4 648.8 639.1 648.8C640.7 648.8 642.4 648.9 644.1 648.8C645.7 648.8 647.4 648.6 649.1 648.6C650.7 648.5 652.4 648.6 654.1 648.5C655.7 648.5 657.4 648.4 659.1 648.3C660.7 648.2 662.4 648 664 647.8C665.7 647.7 667.4 647.6 669 647.4C670.7 647.3 672.3 647 674 646.8C675.6 646.6 677.3 646.5 679 646.2C680.6 646 682.3 645.7 683.9 645.4C685.5 645.1 687.2 644.8 688.8 644.5C690.5 644.2 692.1 643.9 693.7 643.5C695.4 643.2 697 642.8 698.6 642.5C700.2 642.1 701.9 641.8 703.5 641.4C705.1 640.9 706.7 640.5 708.3 640C709.9 639.5 711.5 639 713.1 638.5C714.7 638 716.3 637.6 717.8 637C719.4 636.5 721 635.9 722.5 635.4C724.1 634.8 725.7 634.2 727.2 633.5C728.7 632.9 730.3 632.2 731.8 631.6C733.3 630.9 734.8 630.2 736.3 629.5C737.9 628.8 739.4 628.1 740.9 627.4C742.4 626.7 743.8 625.9 745.3 625.1C746.8 624.3 748.2 623.5 749.7 622.7C751.1 621.8 752.6 621 754 620.1C755.4 619.2 756.8 618.3 758.2 617.4C759.6 616.4 761 615.6 762.4 614.6C763.7 613.6 765 612.6 766.4 611.6C767.7 610.6 769 609.5 770.3 608.5C771.6 607.4 772.9 606.3 774.1 605.2C775.3 604.1 776.5 602.9 777.7 601.8C778.9 600.6 780.1 599.4 781.3 598.2C782.4 597 783.6 595.9 784.7 594.6C785.9 593.4 786.9 592.1 788 590.8C789.1 589.6 790.1 588.3 791.1 586.9C792.1 585.6 793.1 584.2 794.1 582.9C795 581.5 796 580.2 796.9 578.8C797.8 577.4 798.7 575.9 799.6 574.5C800.4 573.1 801.3 571.6 802 570.2C802.8 568.7 803.6 567.2 804.3 565.7C805 564.2 805.7 562.7 806.3 561.1C807 559.6 807.7 558.1 808.2 556.5C808.8 555 809.3 553.4 809.8 551.8C810.4 550.2 810.9 548.7 811.4 547.1C812 545.5 812.4 543.9 812.9 542.3C813.4 540.7 813.8 539.1 814.2 537.5C814.6 535.9 814.9 534.2 815.3 532.6C815.6 531 816 529.3 816.3 527.7C816.6 526.1 817 524.4 817.2 522.8C817.5 521.2 817.8 519.5 818 517.9C818.2 516.2 818.3 514.5 818.5 512.9C818.7 511.2 819.1 509.6 819.3 507.9C819.4 506.3 819.4 504.6 819.6 502.9C819.7 501.3 819.9 499.6 820 497.9C820.1 496.3 820.2 494.6 820.3 493C820.3 491.3 820.3 489.6 820.3 488C820.3 486.3 820.3 484.6 820.3 482.9C820.3 481.3 820.2 479.6 820.2 477.9C820.2 476.3 820.2 474.6 820.1 472.9C820 471.3 819.8 469.6 819.6 468C819.5 466.3 819.4 464.6 819.2 463C819 461.3 818.7 459.7 818.3 458C818 456.4 817.7 454.8 817.4 453.1C817 451.5 816.7 449.9 816.3 448.3C815.8 446.7 815.4 445.1 814.9 443.5C814.4 441.9 813.9 440.3 813.4 438.7C812.9 437.1 812.3 435.6 811.7 434C811.2 432.4 810.5 430.9 809.9 429.3C809.3 427.8 808.8 426.2 808.1 424.7C807.5 423.2 806.7 421.7 806 420.2C805.3 418.7 804.6 417.2 803.8 415.7C803.1 414.2 802.4 412.7 801.6 411.2C800.8 409.7 800 408.3 799.2 406.8C798.4 405.4 797.5 403.9 796.7 402.5C795.8 401.1 794.9 399.7 793.9 398.3C793 396.9 792.1 395.5 791.1 394.2C790.1 392.9 789 391.5 788 390.3C786.9 389 785.8 387.7 784.7 386.5C783.6 385.2 782.5 384 781.3 382.8C780.1 381.6 778.9 380.5 777.6 379.4C776.4 378.3 775.1 377.2 773.8 376.2C772.5 375.1 771.2 374.1 769.8 373.1C768.5 372.1 767.2 371.1 765.8 370.2C764.5 369.2 763.1 368.2 761.7 367.3C760.3 366.4 758.9 365.5 757.5 364.6C756 363.8 754.6 363 753.1 362.2C751.6 361.4 750.2 360.6 748.6 360C747.1 359.3 745.6 358.6 744 358.1C742.5 357.5 740.9 357.1 739.3 356.5C737.7 356 736.1 355.6 734.6 355C733 354.4 731.4 353.8 730 353C728.6 352.1 726.8 351.1 726.1 349.8C725.4 348.6 725.1 346.4 725.8 345.4C726.5 344.3 728.8 344 730.3 343.3C731.8 342.7 733.4 342.2 734.9 341.5C736.5 340.8 737.9 340.1 739.4 339.3C740.9 338.5 742.4 337.7 743.8 336.9C745.3 336.1 746.7 335.2 748.1 334.3C749.5 333.3 750.8 332.4 752.2 331.4C753.5 330.4 754.8 329.4 756.1 328.3C757.4 327.3 758.7 326.2 759.9 325C761.1 323.9 762.3 322.7 763.5 321.5C764.6 320.3 765.7 319 766.7 317.7C767.8 316.4 768.8 315.1 769.8 313.8C770.8 312.5 771.8 311.1 772.8 309.7C773.7 308.4 774.6 306.9 775.5 305.5C776.3 304.1 777.2 302.6 778 301.2C778.8 299.7 779.6 298.3 780.3 296.8C781 295.3 781.7 293.7 782.4 292.2C783.1 290.7 783.8 289.2 784.4 287.7C785 286.1 785.6 284.6 786.2 283C786.7 281.4 787.1 279.8 787.6 278.2C788 276.6 788.5 275 788.9 273.4C789.3 271.7 789.6 270.1 789.9 268.5C790.2 266.8 790.4 265.2 790.7 263.5C790.9 261.9 791.2 260.2 791.4 258.6C791.6 256.9 791.7 255.3 791.9 253.6C792 251.9 792.2 250.3 792.3 248.6C792.4 247 792.3 245.3 792.3 243.6C792.3 241.9 792.4 240.3 792.4 238.6C792.5 236.9 792.5 235.3 792.4 233.6C792.4 231.9 792.4 230.3 792.3 228.6C792.3 226.9 792.3 225.3 792.2 223.6C792.1 221.9 791.8 220.3 791.7 218.6C791.5 217 791.4 215.3 791.2 213.6C790.9 212 790.7 210.3 790.4 208.7C790.1 207.1 789.7 205.4 789.4 203.8C789 202.2 788.7 200.6 788.2 198.9C787.8 197.3 787.3 195.7 786.8 194.2C786.3 192.6 785.8 191 785.2 189.4C784.7 187.8 784 186.3 783.4 184.8C782.8 183.2 782.1 181.7 781.4 180.2C780.7 178.7 780 177.2 779.2 175.7C778.4 174.2 777.6 172.8 776.8 171.3C775.9 169.9 775.1 168.4 774.2 167C773.3 165.6 772.3 164.3 771.4 162.9C770.4 161.5 769.4 160.2 768.4 158.9C767.4 157.5 766.4 156.2 765.3 154.9C764.2 153.7 763.1 152.4 762 151.2C760.9 149.9 759.8 148.6 758.7 147.4C757.5 146.2 756.3 145.1 755.1 144C753.9 142.8 752.6 141.7 751.3 140.7C750.1 139.6 748.8 138.5 747.5 137.5C746.2 136.4 744.8 135.4 743.5 134.4C742.1 133.5 740.8 132.4 739.4 131.5C738 130.6 736.6 129.7 735.2 128.8C733.8 127.9 732.4 127.1 730.9 126.3C729.5 125.4 728 124.7 726.5 123.9C725 123.1 723.6 122.3 722.1 121.6C720.6 120.8 719.1 120.1 717.6 119.4C716 118.8 714.5 118.2 712.9 117.5C711.4 116.9 709.9 116.2 708.3 115.6C706.8 115.1 705.2 114.5 703.7 113.9C702.1 113.4 700.5 113 698.9 112.5C697.3 112 695.7 111.5 694.1 111C692.5 110.5 690.9 110.2 689.3 109.8C687.7 109.4 686 109 684.4 108.7C682.8 108.3 681.1 108 679.5 107.7C677.9 107.4 676.2 107.1 674.6 106.8C672.9 106.5 671.3 106.3 669.6 106.1C668 105.9 666.3 105.8 664.7 105.6C663 105.4 661.4 105.1 659.7 105C658 104.8 656.4 104.8 654.7 104.7C653 104.6 651.4 104.6 649.7 104.5C648 104.5 646.4 104.4 644.7 104.3C643 104.3 641.4 104.3 639.7 104.3C638 104.3 636.4 104.3 634.7 104.4ZM632.9 388.3C634.6 388.2 636.3 388.2 638 388.2C639.6 388.2 641.3 388.2 643 388.2C644.7 388.2 646.3 388.3 648 388.3C649.7 388.4 651.4 388.4 653 388.4C654.7 388.5 656.4 388.7 658 388.8C659.7 389 661.3 389.2 663 389.4C664.7 389.6 666.3 389.8 668 390.1C669.6 390.3 671.3 390.6 672.9 390.9C674.6 391.2 676.2 391.6 677.8 392C679.4 392.3 681.1 392.8 682.7 393.2C684.3 393.6 685.9 394 687.5 394.5C689.1 395 690.7 395.6 692.2 396.2C693.8 396.8 695.3 397.4 696.9 398.1C698.4 398.7 699.9 399.4 701.4 400.1C703 400.8 704.4 401.6 705.9 402.4C707.4 403.2 708.8 404.1 710.2 405C711.6 405.9 713 406.9 714.3 407.8C715.7 408.8 717 409.8 718.3 410.9C719.6 411.9 720.9 413 722.1 414.1C723.4 415.3 724.6 416.4 725.8 417.6C727 418.7 728.1 420 729.2 421.2C730.4 422.5 731.5 423.7 732.5 425.1C733.5 426.4 734.5 427.7 735.5 429.1C736.4 430.5 737.3 431.9 738.2 433.3C739.1 434.7 739.9 436.2 740.7 437.7C741.4 439.2 742.1 440.7 742.7 442.3C743.4 443.8 744 445.3 744.6 446.9C745.2 448.4 745.8 450 746.3 451.6C746.8 453.2 747.2 454.8 747.6 456.4C747.9 458.1 748.3 459.7 748.5 461.4C748.8 463 749.1 464.7 749.3 466.3C749.5 468 749.6 469.7 749.7 471.3C749.8 473 749.7 474.7 749.8 476.3C749.8 478 749.8 479.7 749.8 481.4C749.8 483 749.8 484.7 749.7 486.4C749.7 488.1 749.7 489.7 749.6 491.4C749.4 493.1 749.1 494.7 748.9 496.4C748.6 498 748.4 499.7 748.1 501.3C747.8 503 747.4 504.6 747 506.2C746.6 507.8 746.2 509.4 745.6 511C745.1 512.6 744.5 514.2 743.9 515.7C743.2 517.2 742.6 518.8 741.9 520.3C741.2 521.8 740.4 523.3 739.5 524.7C738.7 526.2 737.8 527.6 736.9 529C735.9 530.3 734.9 531.7 733.9 533C732.8 534.3 731.8 535.6 730.7 536.8C729.5 538.1 728.4 539.3 727.2 540.5C726 541.7 724.7 542.8 723.5 543.8C722.2 544.9 720.9 546 719.6 547C718.2 548 716.9 549 715.5 549.9C714.1 550.8 712.6 551.7 711.2 552.5C709.7 553.4 708.2 554.1 706.8 554.9C705.3 555.6 703.8 556.4 702.3 557.1C700.8 557.8 699.2 558.5 697.7 559.1C696.1 559.7 694.5 560.2 693 560.8C691.4 561.3 689.8 561.9 688.2 562.4C686.6 562.9 685 563.3 683.4 563.7C681.8 564.1 680.1 564.4 678.5 564.8C676.9 565.1 675.2 565.4 673.6 565.8C672 566.1 670.3 566.4 668.7 566.7C667 567 665.4 567.2 663.7 567.4C662.1 567.5 660.4 567.6 658.7 567.8C657 567.9 655.4 568.1 653.7 568.2C652.1 568.4 650.4 568.5 648.7 568.6C647 568.6 645.4 568.7 643.7 568.7C642 568.7 640.3 568.7 638.7 568.7C637 568.7 635.3 568.6 633.6 568.6C632 568.5 630.3 568.5 628.6 568.4C627 568.3 625.3 568.1 623.6 568C622 567.9 620.3 567.8 618.6 567.6C617 567.5 615.3 567.2 613.6 567C612 566.8 610.3 566.6 608.7 566.3C607 566.1 605.4 565.8 603.7 565.5C602.1 565.2 600.5 564.9 598.8 564.5C597.2 564.1 595.6 563.6 594 563.1C592.4 562.7 590.8 562.2 589.2 561.7C587.6 561.2 586 560.7 584.5 560.2C582.9 559.6 581.3 559.1 579.8 558.5C578.2 557.9 576.7 557.2 575.2 556.5C573.6 555.8 572.2 555 570.7 554.2C569.2 553.4 567.8 552.6 566.3 551.7C564.9 550.8 563.5 549.9 562.1 549C560.8 548 559.4 547.1 558 546.1C556.7 545.1 555.4 544 554.2 542.9C552.9 541.8 551.7 540.6 550.6 539.4C549.4 538.2 548.3 536.9 547.2 535.7C546.1 534.4 545.1 533.1 544.1 531.8C543.1 530.4 542.1 529 541.2 527.6C540.3 526.2 539.4 524.8 538.6 523.3C537.8 521.9 537.1 520.3 536.4 518.8C535.7 517.3 535 515.8 534.4 514.2C533.8 512.7 533.3 511.1 532.9 509.5C532.4 507.9 531.9 506.3 531.5 504.7C531.1 503 530.8 501.4 530.5 499.8C530.2 498.1 529.9 496.4 529.7 494.8C529.6 493.1 529.4 491.5 529.3 489.8C529.2 488.1 529.2 486.4 529.2 484.8C529.2 483.1 529.2 481.4 529.2 479.7C529.2 478.1 529.2 476.4 529.2 474.7C529.2 473 529.3 471.4 529.4 469.7C529.5 468 529.7 466.4 529.9 464.7C530.1 463.1 530.4 461.4 530.7 459.8C531 458.1 531.4 456.5 531.9 454.9C532.3 453.3 532.8 451.7 533.3 450.1C533.9 448.5 534.4 446.9 535 445.4C535.7 443.8 536.3 442.3 537 440.8C537.7 439.3 538.5 437.8 539.3 436.3C540.2 434.9 541 433.5 541.9 432C542.8 430.6 543.7 429.2 544.7 427.9C545.7 426.5 546.7 425.2 547.8 423.9C548.8 422.6 550 421.4 551.1 420.1C552.2 418.9 553.4 417.7 554.6 416.5C555.8 415.4 557.1 414.3 558.3 413.2C559.6 412.1 560.9 411.1 562.3 410C563.6 409 564.9 408 566.3 407C567.7 406.1 569.1 405.2 570.5 404.3C571.9 403.4 573.4 402.6 574.8 401.8C576.3 401 577.8 400.3 579.3 399.6C580.9 398.9 582.4 398.2 583.9 397.6C585.5 396.9 587 396.3 588.6 395.8C590.2 395.2 591.8 394.8 593.4 394.3C595 393.8 596.6 393.3 598.2 392.9C599.8 392.4 601.4 392 603.1 391.7C604.7 391.3 606.3 391 608 390.7C609.6 390.4 611.3 390.1 613 389.9C614.6 389.7 616.3 389.6 617.9 389.4C619.6 389.2 621.3 388.9 622.9 388.8C624.6 388.6 626.3 388.5 627.9 388.4C629.6 388.4 631.3 388.3 632.9 388.3ZM633.4 169.9C635.1 169.8 636.8 169.8 638.4 169.8C640.1 169.8 641.8 169.8 643.4 169.8C645.1 169.8 646.8 169.9 648.5 169.9C650.1 170 651.8 170.2 653.4 170.3C655.1 170.5 656.8 170.6 658.4 170.7C660.1 170.9 661.7 171.2 663.4 171.4C665 171.7 666.6 172 668.3 172.4C669.9 172.7 671.5 173 673.2 173.4C674.8 173.8 676.4 174.2 678 174.7C679.6 175.1 681.1 175.7 682.7 176.3C684.3 176.9 685.8 177.4 687.4 178C688.9 178.7 690.4 179.3 691.9 180.1C693.4 180.8 694.9 181.5 696.4 182.4C697.8 183.2 699.3 184 700.7 184.9C702.1 185.8 703.4 186.8 704.8 187.8C706.1 188.8 707.4 189.8 708.7 190.9C710 192 711.2 193.1 712.4 194.3C713.6 195.4 714.7 196.6 715.8 197.9C716.9 199.2 718 200.5 718.9 201.8C719.9 203.2 720.8 204.6 721.7 206C722.5 207.5 723.3 208.9 724 210.4C724.8 211.9 725.4 213.5 726 215C726.6 216.6 727.1 218.1 727.6 219.7C728 221.3 728.4 223 728.7 224.6C729 226.2 729.4 227.9 729.6 229.5C729.9 231.2 730.1 232.8 730.2 234.5C730.4 236.1 730.5 237.8 730.5 239.5C730.6 241.1 730.6 242.8 730.6 244.5C730.6 246.1 730.6 247.8 730.6 249.5C730.5 251.1 730.3 252.8 730.2 254.5C730.1 256.1 729.9 257.8 729.7 259.4C729.5 261.1 729.2 262.7 728.9 264.4C728.5 266 728.2 267.6 727.8 269.2C727.4 270.8 726.9 272.4 726.4 274C725.8 275.6 725.3 277.2 724.5 278.7C723.8 280.2 723 281.6 722.1 283C721.3 284.5 720.4 285.9 719.4 287.2C718.4 288.6 717.4 289.9 716.3 291.1C715.2 292.4 714 293.6 712.8 294.7C711.6 295.9 710.3 296.9 709 298C707.7 299 706.4 300.1 705.1 301.1C703.8 302.1 702.5 303.2 701.1 304.2C699.8 305.1 698.4 306 696.9 306.9C695.5 307.7 694 308.5 692.5 309.3C691 310 689.5 310.7 688 311.3C686.4 311.9 684.9 312.5 683.3 313.1C681.8 313.6 680.2 314.2 678.6 314.6C677 315.1 675.4 315.4 673.7 315.8C672.1 316.1 670.5 316.5 668.8 316.8C667.2 317.1 665.6 317.4 663.9 317.7C662.3 317.9 660.6 318.1 659 318.3C657.3 318.5 655.7 318.6 654 318.7C652.3 318.8 650.7 318.9 649 318.9C647.3 319 645.7 319 644 319.1C642.3 319.1 640.7 319.3 639 319.3C637.3 319.3 635.7 319.2 634 319.1C632.4 319 630.7 318.9 629 318.8C627.4 318.7 625.7 318.7 624 318.5C622.4 318.3 620.7 318 619.1 317.7C617.4 317.5 615.8 317.3 614.2 317C612.5 316.7 610.9 316.4 609.3 316C607.6 315.6 606 315.2 604.4 314.8C602.8 314.4 601.2 314 599.6 313.5C598 313 596.5 312.4 594.9 311.8C593.3 311.2 591.8 310.5 590.3 309.9C588.8 309.2 587.2 308.6 585.7 307.8C584.2 307.1 582.7 306.4 581.3 305.6C579.8 304.7 578.4 303.9 577 303C575.6 302.1 574.2 301.2 572.9 300.2C571.5 299.2 570.3 298 569.2 296.8C568 295.6 566.9 294.4 565.8 293.1C564.7 291.8 563.7 290.5 562.7 289.2C561.7 287.9 560.7 286.5 559.8 285.1C559 283.7 558.1 282.2 557.3 280.7C556.6 279.3 555.8 277.8 555.2 276.3C554.5 274.7 553.8 273.2 553.3 271.6C552.7 270.1 552.1 268.5 551.7 266.9C551.2 265.3 550.8 263.7 550.5 262.1C550.1 260.4 549.8 258.8 549.6 257.1C549.5 255.5 549.4 253.8 549.3 252.1C549.2 250.5 549.2 248.8 549.2 247.1C549.2 245.5 549.2 243.8 549.2 242.1C549.2 240.5 549.1 238.8 549.2 237.1C549.2 235.5 549.3 233.8 549.5 232.1C549.7 230.5 549.9 228.8 550.2 227.2C550.5 225.6 550.9 223.9 551.3 222.3C551.7 220.7 552.1 219.1 552.6 217.5C553.1 215.9 553.7 214.4 554.4 212.8C555 211.3 555.7 209.8 556.5 208.3C557.3 206.8 558.2 205.4 559.1 204C560 202.6 561 201.3 562 199.9C563 198.6 564.1 197.4 565.2 196.2C566.4 194.9 567.6 193.8 568.8 192.6C570 191.5 571.3 190.4 572.6 189.4C573.9 188.3 575.3 187.4 576.7 186.4C578 185.5 579.4 184.5 580.8 183.7C582.2 182.8 583.7 182 585.2 181.3C586.7 180.5 588.2 179.8 589.7 179.1C591.2 178.4 592.8 177.8 594.3 177.2C595.9 176.6 597.4 176 599 175.5C600.6 175 602.2 174.6 603.8 174.1C605.4 173.7 607 173.2 608.7 172.9C610.3 172.5 611.9 172.2 613.6 171.9C615.2 171.6 616.9 171.5 618.5 171.2C620.2 171 621.8 170.7 623.5 170.5C625.1 170.4 626.8 170.3 628.5 170.2C630.1 170.1 631.8 169.9 633.4 169.9Z"/></clipPath>
+    </defs>
+    <g clip-path="url(#eight-shape)">
+      <rect x="440" y="90" width="400" height="580" fill="url(#eight-left)"/>
+      <rect x="440" y="90" width="400" height="580" fill="url(#eight-right)" mask="url(#eight-right-side)"/>
+    </g>
+  </svg>
+  <svg class="scene" viewBox="0 0 1280 720" aria-hidden="true"><g id="labels" class="labels"></g></svg>
+  <div id="guide" class="guide" aria-live="polite">
+    <div id="bubble" class="bubble"><svg class="bubble-bg" aria-hidden="true"><defs><linearGradient id="bubble-fill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--bubble-color-1)"/><stop offset=".52" style="stop-color:var(--bubble-color-2)"/><stop offset="1" style="stop-color:var(--bubble-color-3)"/></linearGradient></defs><path id="bubble-shape" fill="url(#bubble-fill)"/></svg><span id="bubble-text" class="text"></span><span id="dots" class="dots"><i></i><i></i><i></i></span><b class="badge"></b></div>
+    <svg class="buddy" viewBox="0 0 44 54" aria-hidden="true">
+      <defs><linearGradient id="buddy-fill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--buddy-top)"/><stop offset=".55" style="stop-color:var(--buddy-middle)"/><stop offset="1" style="stop-color:var(--buddy-bottom)"/></linearGradient></defs>
+      <path d="M22 1C34.5 1 43 10.5 43 24C43 38.5 32 53 22 53C12 53 1 38.5 1 24C1 10.5 9.5 1 22 1Z" fill="url(#buddy-fill)"/>
+      <circle cx="14.8" cy="13.6" r="1.7" fill="#fff"/><circle cx="29.2" cy="13.6" r="1.7" fill="#fff"/>
+      <path d="M19.4 18.6Q22 21.2 24.6 18.6" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
     </svg>
-    <div class="body-key"><div><strong id="upper">—</strong><span data-i18n="upper">Upper · arms</span></div><div><strong id="lower">—</strong><span data-i18n="lower">Lower · legs</span></div></div><p class="note" data-i18n="ringsNote">Relative activity from visible arms and legs, not a score. The rings change with the current 30-second window.</p>
-  </section>
-  <section class="dashboard" aria-label="Live space and creative guide">
-    <article class="card"><div class="card-head"><div><div class="micro" data-i18n="spaceMicro">01 / Space</div><h2 data-i18n="spaceTitle">Where you moved</h2></div><span id="calibration" class="info">Waiting</span></div><div class="heat-layout"><div id="heat" class="heat" aria-label="Foot position heatmap"></div><div class="heat-copy"><span data-i18n="spaceCopy">A trace of your movement through the space.</span><div class="legend"></div><small><span data-i18n="less">Less</span> <span style="float:right" data-i18n="more">More</span></small></div></div><p class="note" style="margin:12px 0 0;max-width:none" data-i18n="feetNote">Estimated foot positions; occluded feet are excluded.</p></article>
-    <article class="card"><div class="card-head"><div><div class="micro" data-i18n="moveMicro">02 / Movement</div><h2 data-i18n="moveTitle">How you moved</h2></div><span class="info" data-i18n="lastSeconds">Last few seconds</span></div><div id="movement" class="tags"></div><p class="note" style="margin:12px 0 0;max-width:none" data-i18n="moveNote">Descriptions of the recent movement, not a score.</p></article>
-    <article class="card guide"><div class="guide-content"><div class="guide-label"><div class="micro" data-i18n="guideMicro">03 / Creative guide</div><button id="toggle" class="toggle" type="button" aria-pressed="true">Suggestions on</button></div><div id="guide-title" class="guide-title">Space to explore.</div><div id="guide-desc" class="guide-desc">A movement idea can appear here when tracking is ready.</div>
-      <div id="answer" class="answer hidden" aria-live="polite"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="track" cx="22" cy="22" r="18" fill="none" stroke-width="5"/><circle id="answer-fill" class="fill" cx="22" cy="22" r="18" fill="none" stroke-width="5" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="113.1"/></svg><span data-i18n="answerHint">Make an O over your head to say yes</span></div>
-      <div id="why" class="hidden"><button id="why-toggle" class="toggle" type="button" aria-expanded="false">Why this suggestion?</button><p id="why-text" class="note hidden"></p></div><div id="actions" class="actions hidden"><button class="button" id="accept" type="button">Try this</button><button class="button secondary" id="dismiss" type="button">Not now</button></div><div id="engine" class="info" style="margin-top:12px">LOCAL GUIDE · PROTOTYPE</div></div></article>
-  </section>
-</main>
-<footer class="foot"><span id="privacy">Video and pose landmarks stay on your phone.<br>Only movement aggregates are shared on your local network.</span><a href="/display/demo" data-i18n="demoLink">Open demo ↗</a></footer>
+  </div>
+  <div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><small id="notice-sub"></small><div id="notice-bar" class="nbar hidden"><i id="notice-fill"></i></div></div>
 </div>
-<div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><small id="notice-sub"></small><div id="notice-bar" class="bar hidden"><i id="notice-fill"></i></div></div>
+<div id="record-indicator" class="rec hidden" role="status">● REC</div>
+<nav id="bar" class="bar" aria-label="Display controls">
+  <span class="status"><span id="dot" class="sdot"></span><span id="status">Connecting</span><span id="mode"></span></span>
+  <button id="yes" class="chip primary hidden" type="button">Yes</button><button id="no" class="chip hidden" type="button">Not now</button>
+  <button id="toggle" class="chip" type="button" aria-pressed="true">Suggestions on</button>
+  <button id="labels-toggle" class="chip" type="button" aria-pressed="false">Labels · L</button>
+  <button id="debug-toggle" class="chip" type="button" aria-pressed="false">Debug · D</button>
+  <button id="lang" class="chip" type="button" aria-label="Language">EN / KO</button>
+  <a id="demo-link" class="chip" href="/display/demo">Demo</a>
+  <a id="moves-link" class="chip" href="/display/moves" target="_blank" rel="noopener">Moves</a>
+</nav>
 <aside id="debug" class="debug closed" aria-label="Debug view">
-  <div id="debug-handle" class="card-head drag-handle" tabindex="0" role="button" aria-label="Move the debug view (drag, or arrow keys; double-click to reset)" title="Drag to move · double-click to reset"><div class="micro">Debug ⠿</div><span class="info">Drag to move · D to close</span></div>
-  <div id="debug-phone" class="hidden" style="margin-top:8px">Video stays on the phone. Check the phone's camera tab.</div>
+  <div id="debug-handle" class="drag-handle" tabindex="0" role="button" aria-label="Move the debug view (drag, or arrow keys; double-click to reset)" title="Drag to move · double-click to reset"><div class="micro">Debug ⠿</div><span class="info">Drag to move · D to close</span></div>
+  <div id="debug-note" class="info hidden" style="margin-top:8px"></div>
   <div id="debug-webcam">
-    <div class="stage" style="margin-top:8px"><video id="video" muted playsinline></video><canvas id="overlay"></canvas></div>
+    <div class="cam"><video id="video" muted playsinline></video><canvas id="overlay"></canvas></div>
     <dl id="debug-values"></dl>
-    <div>Input: <button id="use-camera" class="toggle" type="button">Webcam</button> · or a dance video <input id="file" type="file" accept="video/*" style="width:auto"></div>
-    <div style="margin-top:6px">BPM <input id="bpm" type="number" min="40" max="240" placeholder="none"> <span class="info">beat timing without the phone</span></div>
+    <div id="debug-inputs">
+      <div>Input: <button id="use-camera" class="link" type="button">Webcam</button> · or a dance video <input id="file" type="file" accept="video/*" style="width:auto"></div>
+      <div style="margin-top:6px">BPM <input id="bpm" type="number" min="40" max="240" placeholder="none"> <span class="info">beat timing without the phone</span></div>
+    </div>
     <div style="margin-top:6px" class="info">Room: <a id="room-link" target="_blank" rel="noopener"></a></div>
     <div id="phone-line" class="info" style="margin-top:4px"></div>
   </div>
+  <dl id="debug-room"></dl>
+  <p id="privacy" class="info" style="margin:0"></p>
 </aside>
 <script type="module">
 const $ = id => document.getElementById(id);
@@ -70,37 +180,37 @@ const isDemo = pathRoom === 'demo';
 const asked = new URLSearchParams(location.search).get('room');
 const webcam = pathRoom === null; // /display: this computer's webcam reads
 const joined = webcam && ROOM_RE.test(asked ?? ''); // /display?room=<phone room>: the webcam joins a phone session
-const room = isDemo ? 'd8d8d8d8d8d8d8d8' : pathRoom ?? (joined ? asked : Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join(''));
+// a room of its own for the webcam alone and for each demo page; the phone's room otherwise
+const room = pathRoom && !isDemo ? pathRoom : joined ? asked : (Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join(''));
 const wsBase = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/projection/ws/${room}`;
-const modeLabel = isDemo ? 'DEMO · SIMULATED' : joined ? 'WEBCAM · PHONE SESSION' : webcam ? 'WEBCAM' : 'LIVE SPACE';
-const heat = $('heat'); for (let i = 0; i < 64; i++) { const cell = document.createElement('div'); cell.className = 'cell'; heat.appendChild(cell); }
-let view, publisher, timer, demoTimer, reconnectTimer, activeProposal = null, proposalKind = null, reasonProposal = null, enabled = true;
-$('mode').textContent = modeLabel;
+const modeLabel = isDemo ? 'DEMO · SCRIPTED DANCER' : joined ? 'WEBCAM · PHONE SESSION' : webcam ? 'WEBCAM' : 'PHONE CAMERA';
+let view, timer, reconnectTimer, activeProposal = null, proposalKind = null, enabled = true;
 // ---- every word on the screen, in English (default) and Korean ----
 const TEXT = {
   en: {
-    eyebrow: 'Movement in the moment', title: 'Your movement,<br>in shape.', sub: 'An abstract view of your practice.',
-    upper: 'Upper · arms', lower: 'Lower · legs', ringsNote: 'Relative activity from visible arms and legs, not a score. The rings change with the current 30-second window.',
-    spaceMicro: '01 / Space', spaceTitle: 'Where you moved', spaceCopy: 'A trace of your movement through the space.', less: 'Less', more: 'More', feetNote: 'Estimated foot positions; occluded feet are excluded.',
-    moveMicro: '02 / Movement', moveTitle: 'How you moved', lastSeconds: 'Last few seconds', moveNote: 'Descriptions of the recent movement, not a score.', moveEmpty: 'Appears while movement is tracked.',
-    guideMicro: '03 / Creative guide', on: 'Suggestions on', off: 'Suggestions off', nudge: 'Need some help?', answerHint: 'Make an O over your head to say yes', demoLink: 'Open demo ↗',
-    privacyWebcam: 'Video and pose landmarks stay on this computer.<br>Only movement words and numbers are shared on your local network.',
-    privacyPhone: 'Video and pose landmarks stay on your phone.<br>Only movement aggregates are shared on your local network.',
-    yes: 'Yes, please', notNow: 'Not now', tryThis: 'Try this', skip: 'Skip',
-    idle: ['Space to explore.', 'A movement idea can appear here when tracking is ready.'], watching: 'Watching the rhythm of your movement.', keepInView: 'Keep your arms and legs in view to enable movement ideas.',
-    states: { explored: ['You tried it.', 'Nice: {name} joined in.'], unanswered: ['Maybe later.', "Keep dancing. I'll check in again soon."], accepted: ['Give it a try.', 'Keep exploring at your own pace.'], dismissed: ['No problem.', 'We will give you some space.'], unavailable: ['Guide unavailable.', 'Movement tracking is still running.'], paused: ['Suggestions are off.', 'Turn them on whenever you want.'] },
-    help: ['Need some help?', 'Want a movement idea?'],
-    prompts: {
-      arm_l: ['Start with your left arm', 'Try a wider reach, then connect it to your next move.'], arm_r: ['Start with your right arm', 'Try a wider reach, then connect it to your next move.'],
-      leg_l: ['Lead with your left leg', 'Add a small step and explore a new direction.'], leg_r: ['Lead with your right leg', 'Add a small step and explore a new direction.'],
-      low: ['Go low', 'Bring your movement closer to the floor for the next counts.'], high: ['Go high', 'Rise up and reach above your usual height.'],
-      left: ['Explore your left side', 'Travel a few steps to your left and dance there.'], right: ['Explore your right side', 'Travel a few steps to your right and dance there.'],
+    on: 'Suggestions on', off: 'Suggestions off', labels: 'Labels · L', debug: 'Debug · D', demo: 'Demo', moves: 'Moves',
+    yes: 'Yes', notNow: 'Not now', tryThis: 'Try it', skip: 'Skip',
+    privacyWebcam: 'Video and pose landmarks stay on this computer. Only movement words and numbers are shared on your local network.',
+    privacyPhone: 'Video and pose landmarks stay on your phone. Only movement aggregates are shared on your local network.',
+    // what the character says: a suggestion by target, then the guide's short answers
+    suggest: {
+      arm_l: 'How about trying to use your left arm?', arm_r: 'How about trying to use your right arm?',
+      leg_l: 'How about trying to use your left leg?', leg_r: 'How about trying to use your right leg?',
+      low: 'How about trying to go low?', high: 'How about trying to reach up high?',
+      left: 'How about trying to move to your left side?', right: 'How about trying to move to your right side?',
     },
-    names: { arm_l: 'left arm', arm_r: 'right arm', leg_l: 'left leg', leg_r: 'right leg', low: 'low height', high: 'high height', left: 'your left side', right: 'your right side' },
-    tags: { speed: 'Speed', size: 'Size', direction: 'Direction', texture: 'Texture', lead: 'Lead', timing: 'Timing', space: 'Space' },
-    parts: { head: 'Head', torso: 'Torso', arm_l: 'Left arm', arm_r: 'Right arm', leg_l: 'Left leg', leg_r: 'Right leg', 'whole body': 'Whole body' },
+    states: { explored: 'You tried it!', unanswered: 'Maybe later.', accepted: 'Give it a try!', dismissed: 'No problem.' },
+    label: {
+      names: { arm_l: 'Left Arm', arm_r: 'Right Arm', leg_l: 'Left Leg', leg_r: 'Right Leg', torso: 'Torso' },
+      kinds: { hold: 'Hold', reach: 'Reach', circle: 'Circle', swing: 'Swing', shake: 'Shake', step: 'Step', shift: 'Shift', travel: 'Travel', jump: 'Jump', drop: 'Drop' },
+      unseen: 'Not seen', lessUsed: 'less used', lackPrefix: 'Less used: ',
+      toward: { up: '↑', side: '↔', down: '↓' },
+      speed: { still: 'still', slow: 'slow', medium: 'medium', fast: 'fast' }, size: { small: 'small', medium: 'mid-size', large: 'large' },
+      texture: { smooth: 'smooth', sharp: 'sharp' }, timing: { 'on beat': 'on beat', 'off beat': 'off beat', mixed: 'mixed' },
+      zone: { left: 'left', center: 'center', right: 'right' }, level: { low: 'low', mid: 'mid height', high: 'high' }, depth: { near: 'near', home: 'home spot', far: 'far' },
+      targets: { low: 'low', high: 'high', left: 'left side', right: 'right side' },
+    },
     status: { connecting: 'Connecting', waiting: 'Waiting for movement', live: 'Tracking live', sim: 'Simulation running', disconnected: 'Disconnected', invalid: 'Invalid data' },
-    calib: { waiting: 'Waiting', floor: 'Floor calibrated', camera: 'Camera view' },
     notices: {
       loading: ['Loading the pose model…', ''], standStill: ['Stand still for 3 seconds', 'Face the camera with your whole body in view.'], stepIn: ['Step into view', 'Stand 2.5–3 m from the camera, whole body in the frame.'],
       permission: ['Camera permission is needed', 'Allow camera access in your browser and system settings, then retry in Debug (D).'], noCamera: ['Camera unavailable', 'Check the camera and permissions, then retry in Debug (D).'], insecureCamera: ['Open this page using localhost', 'Replace the IP address in the address bar with localhost, keeping the rest of the address.'],
@@ -108,28 +218,28 @@ const TEXT = {
     },
   },
   ko: {
-    eyebrow: '지금 이 순간의 움직임', title: '당신의 움직임을,<br>하나의 모양으로.', sub: '연습을 추상적으로 보여 줘요.',
-    upper: '위 · 팔', lower: '아래 · 다리', ringsNote: '보이는 팔과 다리의 상대적인 움직임이에요. 점수가 아니에요. 고리는 최근 30초를 따라 바뀌어요.',
-    spaceMicro: '01 / 공간', spaceTitle: '어디서 움직였나', spaceCopy: '공간 속 움직임의 흔적이에요.', less: '적게', more: '많이', feetNote: '발 위치를 추정한 값이에요. 가려진 발은 빼요.',
-    moveMicro: '02 / 움직임', moveTitle: '어떻게 움직였나', lastSeconds: '최근 몇 초', moveNote: '최근 움직임에 대한 설명이에요. 점수가 아니에요.', moveEmpty: '움직임이 인식되면 나타나요.',
-    guideMicro: '03 / 크리에이티브 가이드', on: '제안 켜짐', off: '제안 꺼짐', nudge: '도움이 필요할까요?', answerHint: '머리 위로 O를 만들면 "네"예요', demoLink: '데모 열기 ↗',
-    privacyWebcam: '영상과 관절 좌표는 이 컴퓨터 밖으로 나가지 않아요.<br>움직임을 나타내는 말과 숫자만 같은 네트워크에 공유돼요.',
-    privacyPhone: '영상과 관절 좌표는 폰 밖으로 나가지 않아요.<br>움직임 집계만 같은 네트워크에 공유돼요.',
-    yes: '네, 좋아요', notNow: '다음에', tryThis: '해 볼게요', skip: '건너뛰기',
-    idle: ['탐색할 공간.', '인식이 준비되면 여기에 움직임 아이디어가 떠요.'], watching: '움직임의 리듬을 보고 있어요.', keepInView: '팔과 다리가 화면에 보이면 아이디어를 드릴 수 있어요.',
-    states: { explored: ['해봤네요!', '좋아요 · {name}'], unanswered: ['다음에 해요.', '계속 춰요. 조금 뒤에 다시 물어볼게요.'], accepted: ['한번 해 보세요.', '편한 속도로 탐색해 보세요.'], dismissed: ['괜찮아요.', '잠시 지켜볼게요.'], unavailable: ['가이드를 쓸 수 없어요.', '움직임 인식은 계속돼요.'], paused: ['제안이 꺼져 있어요.', '원할 때 다시 켜 주세요.'] },
-    help: ['도움이 필요할까요?', '움직임 아이디어를 드릴까요?'],
-    prompts: {
-      arm_l: ['왼팔로 시작해 볼까요?', '더 크게 뻗고, 다음 동작으로 이어 보세요.'], arm_r: ['오른팔로 시작해 볼까요?', '더 크게 뻗고, 다음 동작으로 이어 보세요.'],
-      leg_l: ['왼다리로 이끌어 볼까요?', '작게 한 걸음 내딛고 새로운 방향을 찾아보세요.'], leg_r: ['오른다리로 이끌어 볼까요?', '작게 한 걸음 내딛고 새로운 방향을 찾아보세요.'],
-      low: ['낮게 내려가 볼까요?', '다음 몇 카운트는 바닥 가까이에서 움직여 보세요.'], high: ['높게 올라가 볼까요?', '평소보다 높이 뻗고 올라서 보세요.'],
-      left: ['왼쪽 공간으로 가 볼까요?', '왼쪽으로 몇 걸음 옮겨서 그곳에서 춰 보세요.'], right: ['오른쪽 공간으로 가 볼까요?', '오른쪽으로 몇 걸음 옮겨서 그곳에서 춰 보세요.'],
+    on: '제안 켜짐', off: '제안 꺼짐', labels: '라벨 · L', debug: '디버그 · D', demo: '데모', moves: '동작 설명',
+    yes: '네', notNow: '다음에', tryThis: '해 볼게요', skip: '건너뛰기',
+    privacyWebcam: '영상과 관절 좌표는 이 컴퓨터 밖으로 나가지 않아요. 움직임을 나타내는 말과 숫자만 같은 네트워크에 공유돼요.',
+    privacyPhone: '영상과 관절 좌표는 폰 밖으로 나가지 않아요. 움직임 집계만 같은 네트워크에 공유돼요.',
+    suggest: {
+      arm_l: '왼팔을 써 보는 건 어때요?', arm_r: '오른팔을 써 보는 건 어때요?',
+      leg_l: '왼다리를 써 보는 건 어때요?', leg_r: '오른다리를 써 보는 건 어때요?',
+      low: '낮게 내려가 보는 건 어때요?', high: '높이 뻗어 보는 건 어때요?',
+      left: '왼쪽으로 가서 춰 보는 건 어때요?', right: '오른쪽으로 가서 춰 보는 건 어때요?',
     },
-    names: { arm_l: '왼팔', arm_r: '오른팔', leg_l: '왼다리', leg_r: '오른다리', low: '낮은 높이', high: '높은 높이', left: '왼쪽 공간', right: '오른쪽 공간' },
-    tags: { speed: '속도', size: '크기', direction: '방향', texture: '질감', lead: '주도', timing: '박자', space: '공간' },
-    parts: { head: '머리', torso: '몸통', arm_l: '왼팔', arm_r: '오른팔', leg_l: '왼다리', leg_r: '오른다리', 'whole body': '온몸' },
+    states: { explored: '해봤네요!', unanswered: '다음에 해요.', accepted: '한번 해 보세요!', dismissed: '괜찮아요.' },
+    label: {
+      names: { arm_l: '왼팔', arm_r: '오른팔', leg_l: '왼다리', leg_r: '오른다리', torso: '몸통' },
+      kinds: { hold: '멈춤', reach: '뻗기', circle: '원 그리기', swing: '스윙', shake: '흔들기', step: '스텝', shift: '무게 이동', travel: '이동', jump: '점프', drop: '내려앉기' },
+      unseen: '안 보임', lessUsed: '덜 씀', lackPrefix: '덜 쓴 곳: ',
+      toward: { up: '↑', side: '↔', down: '↓' },
+      speed: { still: '정지', slow: '느리게', medium: '보통', fast: '빠르게' }, size: { small: '작게', medium: '중간 크기', large: '크게' },
+      texture: { smooth: '부드럽게', sharp: '날카롭게' }, timing: { 'on beat': '정박', 'off beat': '엇박', mixed: '박자 섞임' },
+      zone: { left: '왼쪽', center: '가운데', right: '오른쪽' }, level: { low: '낮게', mid: '중간 높이', high: '높게' }, depth: { near: '가까이', home: '제자리', far: '멀리' },
+      targets: { low: '낮은 곳', high: '높은 곳', left: '왼쪽', right: '오른쪽' },
+    },
     status: { connecting: '연결 중', waiting: '움직임을 기다리는 중', live: '인식 중', sim: '시뮬레이션 중', disconnected: '연결 끊김', invalid: '잘못된 데이터' },
-    calib: { waiting: '기다리는 중', floor: '바닥 보정됨', camera: '카메라 화면 기준' },
     notices: {
       loading: ['자세 인식 모델을 불러오는 중…', ''], standStill: ['3초 동안 가만히 서 주세요', '카메라를 보고 온몸이 화면에 들어오게 서 주세요.'], stepIn: ['화면 안으로 들어와 주세요', '카메라에서 2.5–3m, 온몸이 화면에 들어오게.'],
       permission: ['카메라 권한이 필요해요', '브라우저와 시스템 설정에서 카메라를 허용한 뒤 디버그(D)에서 다시 시도하세요.'], noCamera: ['카메라를 사용할 수 없어요', '카메라와 권한을 확인하고 디버그(D)에서 다시 시도하세요.'], insecureCamera: ['localhost 주소로 열어주세요', '주소창에서 IP 주소를 localhost로 바꾸고 나머지 주소는 그대로 두세요.'],
@@ -137,93 +247,235 @@ const TEXT = {
     },
   },
 };
-let lang = 'en', lastData = null;
+let lang = 'en', lastData = null, statusKey = 'connecting';
 try { if (localStorage.getItem('eight.lang') === 'ko') lang = 'ko'; } catch {}
 const T = () => TEXT[lang];
 
-// ---- the room's view: what every screen shows, and the character's state ----
-const clear = (message) => {
-  $('status').textContent = T().status[message] ?? message; $('dot').classList.remove('live'); $('calibration').textContent = T().calib.waiting; lastData = null;
-  $('upper').textContent = $('lower').textContent = '—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74);
-  for (const cell of heat.children) cell.style.background = '#302538';
-  movement(null); activeProposal = null; proposalKind = null; reasonProposal = null; $('why').classList.add('hidden'); $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); $('actions').classList.add('hidden'); $('nudge').classList.add('hidden'); $('answer').classList.add('hidden'); [$('guide-title').textContent, $('guide-desc').textContent] = T().idle;
+// ---- the 8's labels (L): each part, on the dancer's own side (the screen is a mirror), with what it is doing ----
+const SVG_NS = 'http://www.w3.org/2000/svg';
+// Positions come from the design values at the top of the style sheet (--label-*), in px of the 1280×720 frame.
+const design = getComputedStyle(document.documentElement);
+const numbers = name => design.getPropertyValue(name).trim().split(/\s+/).map(Number);
+const rows = (name, keys) => Object.fromEntries(keys.map((key, i) => [key, numbers(name)[i]]));
+const LIMB_ROWS = ['name', 'kind', 'detail'];
+const GEO = {}; // per part: dot on the 8, elbow of the leader line, side the text grows to, text baselines
+for (const [part, spot, lines] of [
+  ['arm_l', '--label-arm-l', rows('--label-rows-arms', LIMB_ROWS)], ['arm_r', '--label-arm-r', rows('--label-rows-arms', LIMB_ROWS)],
+  ['torso', '--label-torso', rows('--label-rows-torso', [...LIMB_ROWS, 'space', 'lack'])],
+  ['leg_l', '--label-leg-l', rows('--label-rows-legs', LIMB_ROWS)], ['leg_r', '--label-leg-r', rows('--label-rows-legs', LIMB_ROWS)],
+]) {
+  const [dx, dy, ex, ey] = numbers(spot);
+  if (![dx, dy, ex, ey, ...Object.values(lines)].every(Number.isFinite)) { console.warn(`Check ${spot} and its --label-rows-* in the design values`); continue; }
+  GEO[part] = { dot: [dx, dy], elbow: [ex, ey], side: ex < dx ? -1 : 1, rows: lines };
+}
+const DOT_SIZE = numbers('--label-dot-size')[0] || 3.5;
+const LABEL = {};
+for (const [name, g] of Object.entries(GEO)) {
+  const el = tag => document.createElementNS(SVG_NS, tag);
+  const group = el('g'), line = el('polyline'), dot = el('circle'), texts = {};
+  group.setAttribute('class', 'part'); line.setAttribute('class', 'leader'); dot.setAttribute('class', 'dot');
+  dot.setAttribute('cx', g.dot[0]); dot.setAttribute('cy', g.dot[1]); dot.setAttribute('r', DOT_SIZE);
+  group.append(line, dot);
+  for (const [row, y] of Object.entries(g.rows)) {
+    const t = el('text'); t.setAttribute('class', row); t.setAttribute('y', y);
+    t.setAttribute('x', g.elbow[0] + 4 * g.side); t.setAttribute('text-anchor', g.side < 0 ? 'end' : 'start');
+    group.append(t); texts[row] = t;
+  }
+  $('labels').append(group); LABEL[name] = { group, line, texts, g };
+}
+function drawLabels(parts, space, lacking) {
+  const w = T().label;
+  for (const [name, { group, line, texts, g }] of Object.entries(LABEL)) {
+    const p = parts?.[name], known = typeof p?.kind === 'string', lack = lacking.includes(name);
+    texts.name.textContent = w.names[name] + (lack ? ` · ${w.lessUsed}` : '');
+    texts.kind.textContent = !p ? '—' : known ? (w.kinds[p.kind] ?? '?') + (p.kind !== 'hold' && p.kind !== 'step' && w.toward[p.toward] ? ` ${w.toward[p.toward]}` : '') : w.unseen;
+    texts.detail.textContent = known && p.kind !== 'hold' ? [w.speed[p.speed], w.size[p.size], w.texture[p.texture], w.timing[p.timing]].filter(Boolean).join(' · ') : '';
+    if (texts.space) texts.space.textContent = space ? [w.zone[space.zone], w.level[space.level], w.depth[space.depth]].filter(Boolean).join(' · ') : '';
+    if (texts.lack) { const other = lacking.map(t => w.targets[t]).filter(Boolean); texts.lack.textContent = other.length ? w.lackPrefix + other.join(' · ') : ''; }
+    group.classList.toggle('unseen', !!p && !known); group.classList.toggle('hold', known && p.kind === 'hold'); group.classList.toggle('lacking', lack);
+    let width = 60; // the underline runs under the widest line
+    for (const t of Object.values(texts)) { try { width = Math.max(width, t.getComputedTextLength()); } catch {} }
+    const [ex, ey] = g.elbow, [dx, dy] = g.dot;
+    line.setAttribute('points', `${ex + g.side * (width + 8)},${ey} ${ex},${ey} ${dx},${dy}`);
+  }
+}
+const lackingOf = data => (Array.isArray(data?.body?.underused) ? data.body.underused : []);
+const redrawLabels = () => drawLabels(lastData?.parts, lastData?.space, lackingOf(lastData));
+
+// ---- the character: "..." while it asks (one dot fills per second of an O), then the idea or a short answer ----
+const setHold = p => {
+  const dots = $('dots'); dots.classList.toggle('holding', p > 0);
+  [...dots.children].forEach((d, i) => d.classList.toggle('on', p > i / 3));
 };
-const PART = {head:'Head',torso:'Torso',arm_l:'Left arm',arm_r:'Right arm',leg_l:'Left leg',leg_r:'Right leg','whole body':'Whole body'};
-const WORDS = new Set(['still','slow','medium','fast','small','large','in place','left','right','up','down','side to side','up-down','smooth','sharp','on beat','off beat','mixed',...Object.keys(PART)]);
-function movement(m, parts, space) {
-  const box = $('movement'); box.textContent = '';
-  const tags = T().tags, rows = m ? [[tags.speed,m.speed],[tags.size,m.size],[tags.direction,m.direction],[tags.texture,m.texture],[tags.lead,PART[m.lead] && T().parts[m.lead]],[tags.timing,m.timing]] : [];
-  for (const [name, word] of rows) { if (typeof word !== 'string' || !(WORDS.has(word) || Object.values(T().parts).includes(word))) continue; const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, word); box.appendChild(tag); }
-  const line = (name, text) => { const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, text); box.appendChild(tag); };
-  const ok = v => typeof v === 'string' && /^[a-z -]{1,16}$/.test(v);
-  if (parts && typeof parts === 'object') for (const [name, p] of Object.entries(parts)) { if (PART[name] && p && ok(p.kind) && p.kind !== 'hold') line(T().parts[name], [p.kind, p.size, p.texture, p.timing].filter(ok).join(' · ')); }
-  if (space && typeof space === 'object' && [space.zone, space.level, space.depth].every(ok)) line(T().tags.space, `${space.zone} · ${space.level} · ${space.depth}` + (Number.isFinite(space.width) ? ` · ${space.width} wide` : ''));
-  if (!box.children.length) { const tag = document.createElement('span'); tag.className = 'info'; tag.textContent = T().moveEmpty; box.appendChild(tag); }
+function showGuide(agent) {
+  const w = T(), proposal = agent?.proposal, ask = proposal?.kind === 'help';
+  activeProposal = proposal?.id ?? null; proposalKind = proposal?.kind ?? null;
+  if (agent) { enabled = agent.state !== 'paused'; setToggle(); }
+  // The local generator's words are translated by target; any other generator's own words are shown as they are.
+  const say = proposal && !ask ? (proposal.title === TEXT.en.suggest[proposal.target] ? w.suggest[proposal.target] : proposal.title)
+    : !proposal && agent ? w.states[agent.state] ?? null : null;
+  const show = ask || !!say;
+  // nothing to say yet, but a question is coming (agent.soon: how far the guide is towards asking): circle the 8
+  const soon = agent?.soon ?? 0, brewing = !show && enabled && soon >= ORBIT_FROM && !calm.matches;
+  orbitLevel = brewing ? 0.25 + 0.75 * Math.min(1, (soon - ORBIT_FROM) / (1 - ORBIT_FROM)) : 0;
+  setGuideMode(show ? 'home' : brewing ? 'orbit' : 'hidden');
+  if (show) { $('bubble').classList.toggle('ask', ask); if (say) $('bubble-text').textContent = say; }
+  if (!ask) setHold(0);
+  $('yes').classList.toggle('hidden', !proposal); $('no').classList.toggle('hidden', !proposal);
+  if (proposal) { $('yes').textContent = ask ? w.yes : w.tryThis; $('no').textContent = ask ? w.notNow : w.skip; }
+}
+
+// The orbit: a tilted ellipse around the 8 (design value --orbit); the lower half passes in front of the 8, the upper
+// half behind it, smaller and dimmer. When it has something to say it does not cut across: it keeps circling (a little
+// faster if it is far round) until it reaches the point of the orbit nearest its spot, then settles there. When it is
+// done talking and another question is on its way, it steps back onto the orbit from that same point.
+const ORBIT = (([cx, cy, rx, ry, tilt, period]) => ({ cx, cy, rx, ry, tilt: tilt * Math.PI / 180, period }))(numbers('--orbit'));
+const ORBIT_FROM = numbers('--orbit-from')[0] || 0.35, HOME = [numbers('--buddy-x')[0], numbers('--buddy-y')[0]];
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+const TAU = 2 * Math.PI, ARRIVE_S = 3, LEAVE_S = 0.8; // at most this long to come round to its spot; easing back onto the orbit
+const orbitPoint = a => { // [x, y, near]: near is 1 in front of the 8, 0 behind it
+  const ex = ORBIT.rx * Math.cos(a), ey = ORBIT.ry * Math.sin(a), c = Math.cos(ORBIT.tilt), s = Math.sin(ORBIT.tilt);
+  return [ORBIT.cx + ex * c - ey * s, ORBIT.cy + ex * s + ey * c, (Math.sin(a) + 1) / 2];
+};
+const SPOT = Array.from({ length: 360 }, (_, i) => i * TAU / 360) // the point of the orbit nearest its spot
+  .reduce((best, a) => { const [x, y] = orbitPoint(a), d = Math.hypot(x - HOME[0], y - HOME[1]); return d < best.d ? { a, d } : best; }, { a: Math.PI, d: Infinity }).a;
+const ahead = () => (((SPOT - orbitAngle) % TAU) + TAU) % TAU; // how far round the orbit the spot still is
+const easeInOut = x => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x)));
+let guideMode = 'hidden', orbitLevel = 0, orbitAngle = SPOT, orbitLast = 0, arriveSpeed = 0, leftAt = -Infinity, hideTimer = null, landTimer = null;
+function orbitFrame(now) {
+  if (guideMode !== 'orbit' && guideMode !== 'arrive') return;
+  const dt = orbitLast ? Math.min(now - orbitLast, 100) / 1000 : 0; orbitLast = now;
+  if (guideMode === 'arrive') {
+    if (arriveSpeed * dt >= ahead()) { orbitAngle = SPOT; land(); return; } // came round: settle on the spot
+    orbitAngle += arriveSpeed * dt;
+  } else orbitAngle += dt * TAU / ORBIT.period;
+  const [x, y, near] = orbitPoint(orbitAngle), out = easeInOut((now - leftAt) / 1000 / LEAVE_S); // 0 on its spot .. 1 on the orbit
+  const k = $('stage').clientWidth / 1280, g = $('guide'), scale = 1 + out * (0.75 + 0.25 * near - 1);
+  g.classList.toggle('behind', out > 0.5 && near < 0.5);
+  g.style.transform = `translate(calc(-50% + ${(out * (x - HOME[0]) * k).toFixed(1)}px), ${(out * (y - HOME[1]) * k).toFixed(1)}px) scale(${scale.toFixed(3)})`;
+  g.style.opacity = ((guideMode === 'arrive' ? 1 : orbitLevel) * (0.5 + 0.5 * near)).toFixed(3);
+  requestAnimationFrame(orbitFrame);
+}
+function land() { // the last short way from the orbit to its spot; the bubble pops up once it is there
+  const g = $('guide');
+  guideMode = 'home';
+  g.classList.add('land'); clearTimeout(landTimer); landTimer = setTimeout(() => g.classList.remove('land'), 1200);
+  g.classList.remove('orbit', 'behind'); g.classList.add('show'); g.style.transform = ''; g.style.opacity = '';
+}
+function setGuideMode(mode) {
+  const g = $('guide'), was = guideMode, circling = was === 'orbit' || was === 'arrive';
+  if (mode === 'home' && circling) { // something to say while circling: keep going round to the spot (at most ARRIVE_S)
+    if (was === 'orbit') { guideMode = 'arrive'; arriveSpeed = Math.max(TAU / ORBIT.period, ahead() / ARRIVE_S); }
+    return;
+  }
+  if (mode === 'orbit' && was === 'arrive') { guideMode = 'orbit'; return; } // the question went away on the way: circle on
+  if (mode === was) return;
+  guideMode = mode;
+  clearTimeout(hideTimer);
+  if (mode === 'orbit') {
+    clearTimeout(landTimer);
+    if (was === 'home') { orbitAngle = SPOT; leftAt = performance.now(); } // step back onto the orbit from its spot
+    g.classList.remove('show', 'land'); g.classList.add('orbit'); orbitLast = 0; requestAnimationFrame(orbitFrame);
+  } else if (mode === 'home') {
+    g.classList.remove('orbit', 'behind'); g.classList.add('show'); g.style.transform = ''; g.style.opacity = '';
+  } else {
+    g.classList.remove('show', 'land');
+    if (circling) { // fade out where it is (still without its bubble), then go back to the spot unseen
+      g.style.opacity = '0';
+      hideTimer = setTimeout(() => { g.classList.remove('orbit', 'behind'); g.style.transform = ''; g.style.opacity = ''; }, 900);
+    }
+  }
+}
+
+// The bubble and its tail as one outline, redrawn whenever the bubble changes size.
+function shapeBubble() {
+  const b = $('bubble'), w = b.offsetWidth, h = b.offsetHeight, k = $('stage').clientWidth / 1280;
+  if (!w || !h) return;
+  const tw = (numbers('--bubble-tail-width')[0] || 18) * k, th = (numbers('--bubble-tail-height')[0] || 12) * k, r = Math.min(h, w) / 2, cx = w / 2;
+  const svg = b.querySelector('.bubble-bg'), f = x => x.toFixed(1);
+  svg.setAttribute('width', f(w)); svg.setAttribute('height', f(h + th)); svg.setAttribute('viewBox', `0 0 ${f(w)} ${f(h + th)}`);
+  $('bubble-shape').setAttribute('d', `M${f(r)} 0H${f(w - r)}A${f(r)} ${f(r)} 0 0 1 ${f(w - r)} ${f(h)}H${f(cx + tw / 2)}`
+    + `C${f(cx + tw * 0.2)} ${f(h)} ${f(cx + tw * 0.12)} ${f(h + th)} ${f(cx)} ${f(h + th)}C${f(cx - tw * 0.12)} ${f(h + th)} ${f(cx - tw * 0.2)} ${f(h)} ${f(cx - tw / 2)} ${f(h)}`
+    + `H${f(r)}A${f(r)} ${f(r)} 0 0 1 ${f(r)} 0Z`);
+}
+new ResizeObserver(shapeBubble).observe($('bubble'));
+
+// ---- the room's view: what every screen shows ----
+const setStatus = (key, live) => {
+  statusKey = key; $('status').textContent = T().status[key] ?? key;
+  $('dot').classList.toggle('live', live); $('stage').classList.toggle('offline', !live);
+};
+const clear = key => {
+  clearTimeout(timer); setStatus(key, false); lastData = null;
+  drawLabels(null, null, []); showGuide(null); paintEight(null);
+  if (debugOpen) roomDebug(null);
+};
+
+// ---- the 8's colors: each limb's corner, pink when it moved a lot in the last 30 s, blue when it barely moved ----
+const LIMB_NAMES = ['arm_l', 'arm_r', 'leg_l', 'leg_r'];
+const rgb = name => { // a #rgb / #rrggbb design value
+  const s = design.getPropertyValue(name).trim().replace('#', ''), f = s.length === 3 ? [...s].map(c => c + c).join('') : s.slice(0, 6);
+  return [0, 2, 4].map(i => parseInt(f.slice(i, i + 2), 16));
+};
+const mix = (a, b, k) => a.map((x, i) => Math.round(x + (b[i] - x) * k));
+function limbColor(share) { // an even share of the limbs' movement (25 %) is the middle color
+  const full = Number(design.getPropertyValue('--eight-full-at')) || 0.15, k = Math.max(0, Math.min(1, 0.5 + (share - 0.25) / (2 * full)));
+  return `rgb(${(k < 0.5 ? mix(rgb('--eight-unused'), rgb('--eight-middle'), 2 * k) : mix(rgb('--eight-middle'), rgb('--eight-used'), 2 * k - 1)).join(',')})`;
+}
+function paintEight(data) {
+  const b = data?.body, raw = design.getPropertyValue('--eight-now').trim(), w = raw === '' ? 0.7 : Math.max(0, Math.min(1, Number(raw) || 0));
+  const blend = (recent, now) => (now ? Object.fromEntries(LIMB_NAMES.map(l => [l, (1 - w) * recent[l] + w * now[l]])) : recent); // the last 4 s, or the last 30 s alone after a still 8-count
+  const shares = b?.limbs ? blend(b.limbs, b.limbsNow) : b ? { arm_l: b.upper / 2, arm_r: b.upper / 2, leg_l: b.lower / 2, leg_r: b.lower / 2 } : null; // an older phone: arms and legs only
+  for (const limb of LIMB_NAMES) {
+    const unseen = data?.parts?.[limb]?.kind === null; // not seen enough is not unused: the middle color
+    $(`c-${limb}`).style.stopColor = !shares ? `var(${limb.startsWith('arm') ? '--eight-used' : '--eight-unused'})` // nobody tracked: the design's look
+      : unseen ? 'var(--eight-middle)' : limbColor(shares[limb]);
+  }
 }
 const send = obj => { if (view && view.readyState === WebSocket.OPEN) view.send(JSON.stringify(obj)); };
 const answer = choice => { if (activeProposal) send({ type: 'agent_response', proposalId: activeProposal, choice }); };
-$('why-toggle').onclick = () => { const open = !$('why-text').classList.toggle('hidden'); $('why-toggle').setAttribute('aria-expanded', String(open)); };
-$('toggle').onclick = () => { if (!view || view.readyState !== WebSocket.OPEN) return; send({type:'agent_enabled',enabled:!enabled}); };
-$('accept').onclick = () => answer('accept');
-$('dismiss').onclick = () => answer('dismiss');
-let lastAgent = null;
+const setToggle = () => { $('toggle').textContent = enabled ? T().on : T().off; $('toggle').setAttribute('aria-pressed', String(enabled)); };
+$('toggle').onclick = () => { if (view?.readyState === WebSocket.OPEN) send({ type: 'agent_enabled', enabled: !enabled }); };
+$('yes').onclick = () => answer('accept');
+$('no').onclick = () => answer('dismiss');
 function render(data) {
   clearTimeout(timer);
   if (!data.active || !Array.isArray(data.cells) || data.cells.length !== 64) { clear('waiting'); return; }
   lastData = data;
-  $('status').textContent = isDemo ? T().status.sim : T().status.live; $('dot').classList.add('live');
-  $('mode').textContent = data.missionTitle && !isDemo ? `MISSION · ${data.missionTitle}` : modeLabel;
-  $('calibration').textContent = data.calibrated ? T().calib.floor : T().calib.camera;
-  data.cells.forEach((v,i) => { const amount=Math.max(0,Math.min(1,Number(v)||0)); heat.children[i].style.background = `rgba(234,100,229,${.08+.9*Math.sqrt(amount)})`; });
-  movement(data.movement, data.parts, data.space);
-  if (data.body) {
-    const u=Math.max(0,Math.min(1,data.body.upper)),l=Math.max(0,Math.min(1,data.body.lower));
-    $('upper').textContent=Math.round(u*100)+'%'; $('lower').textContent=Math.round(l*100)+'%';
-    $('upper-ring').setAttribute('rx',Math.round(52+32*u)); $('upper-ring').setAttribute('ry',Math.round(52+27*u));
-    $('lower-ring').setAttribute('rx',Math.round(52+38*l)); $('lower-ring').setAttribute('ry',Math.round(52+34*l));
-  } else { $('upper').textContent=$('lower').textContent='—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74); }
-  const agent=data.agent; lastAgent = agent ?? lastAgent; const proposal=agent?.proposal; activeProposal=proposal?.id || null; proposalKind = proposal?.kind ?? null;
-  if (agent) { enabled=agent.state!=='paused'; $('toggle').textContent=enabled?T().on:T().off; $('toggle').setAttribute('aria-pressed',String(enabled)); }
-  if (reasonProposal !== proposal?.id) { reasonProposal = proposal?.id; $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); }
-  $('why').classList.toggle('hidden', proposal?.kind !== 'suggestion' || !proposal?.reason);
-  $('why-toggle').textContent = lang === 'ko' ? '이 제안의 근거' : 'Why this suggestion?';
-  $('why-text').textContent = proposal?.reason || '';
-  $('actions').classList.toggle('hidden',!proposal);
-  $('nudge').classList.toggle('hidden',proposal?.kind!=='help');
-  $('answer').classList.toggle('hidden', !(webcam && proposal?.kind === 'help'));
-  $('accept').textContent=proposal?.kind==='help'?T().yes:T().tryThis; $('dismiss').textContent=proposal?.kind==='help'?T().notNow:T().skip;
-  const words = T(), state = words.states[agent?.state];
-  // The character's words come from this page's table (by kind and target); the server's own words are the fallback.
-  if (proposal) [$('guide-title').textContent, $('guide-desc').textContent] = (proposal.kind === 'help' ? words.help : words.prompts[proposal.target]) ?? [proposal.title, proposal.detail];
-  else if (state) { $('guide-title').textContent = state[0]; $('guide-desc').textContent = state[1].replace('{name}', words.names[agent.target] ?? ''); }
-  else { $('guide-title').textContent = words.idle[0]; $('guide-desc').textContent = data.body ? words.watching : words.keepInView; }
-  timer=setTimeout(()=>clear('waiting'),3000);
+  setStatus(isDemo ? 'sim' : 'live', true);
+  $('mode').textContent = data.missionTitle && !isDemo ? ` · MISSION · ${data.missionTitle}` : ` · ${modeLabel}`;
+  drawLabels(data.parts, data.space, lackingOf(data));
+  paintEight(data);
+  showGuide(data.agent);
+  if (debugOpen) roomDebug(data);
+  timer = setTimeout(() => clear('waiting'), 3000);
 }
-function startDemo() {
-  if (publisher && (publisher.readyState === WebSocket.OPEN || publisher.readyState === WebSocket.CONNECTING)) return;
-  publisher = new WebSocket(wsBase+'/publish');
-  publisher.onopen=()=>{ const start=Date.now(); demoTimer=setInterval(()=>{
-    const t=(Date.now()-start)/1000, x=3.5+2.1*Math.sin(t*.26), y=3.5+2*Math.cos(t*.19);
-    const cells=Array.from({length:64},(_,i)=>{ const dx=i%8-x,dy=Math.floor(i/8)-y; return Math.round(Math.exp(-(dx*dx+dy*dy)/3)*1000)/1000; });
-    const upper=.64+.12*Math.sin(t*.15); publisher.send(JSON.stringify({active:true,calibrated:true,cells,context:{position:t,loop:null,saveRevision:0},body:{upper,lower:1-upper,underused:['leg_l']},movement:[{speed:'slow',size:'large',direction:'in place',texture:'smooth',lead:'arm_r',timing:'on beat'},{speed:'medium',size:'medium',direction:'side to side',texture:'sharp',lead:'whole body',timing:'mixed'},{speed:'still',size:'small',direction:'in place',texture:null,lead:null,timing:null}][Math.floor(t/6)%3]}));
-  },250); };
-  publisher.onclose=()=>{ clearInterval(demoTimer); };
+function connect() {
+  view = new WebSocket(wsBase + '/view');
+  view.onopen = () => setStatus('waiting', false);
+  view.onmessage = e => { try { render(JSON.parse(e.data)); } catch { clear('invalid'); } };
+  view.onclose = () => { clear('disconnected'); reconnectTimer = setTimeout(connect, 2000); };
 }
-function connect(){
-  view=new WebSocket(wsBase+'/view'); view.onopen=()=>{ $('status').textContent=T().status.waiting; if(isDemo) startDemo(); };
-  view.onmessage=e=>{try{render(JSON.parse(e.data));}catch{clear('invalid');}};
-  view.onclose=()=>{clearTimeout(timer);clear('disconnected');reconnectTimer=setTimeout(connect,2000);};
-}
-addEventListener('pagehide',()=>{clearTimeout(reconnectTimer);clearInterval(demoTimer);publisher?.close();view?.close();});
-connect();
+addEventListener('pagehide', () => { clearTimeout(reconnectTimer); view?.close(); });
 
-// ---- debug view: D or the button; remembered per browser ----
-let debugOpen = false;
-const setDebug = on => {
-  debugOpen = on; $('debug').classList.toggle('closed', !on); $('debug-toggle').setAttribute('aria-pressed', String(on));
-  try { localStorage.setItem('eight.debug', on ? '1' : '0'); } catch {}
-};
-try { setDebug(localStorage.getItem('eight.debug') === '1'); } catch { setDebug(false); }
+// ---- controls: shown while the mouse moves; the cursor hides with them ----
+{
+  let idle;
+  const wake = () => {
+    document.body.classList.remove('idle'); clearTimeout(idle);
+    idle = setTimeout(() => { if (!$('bar').matches(':hover, :focus-within')) document.body.classList.add('idle'); }, 2500);
+  };
+  for (const type of ['pointermove', 'pointerdown']) addEventListener(type, wake);
+  wake();
+}
+
+// ---- labels (L) and the debug view (D): each remembered per browser ----
+let labelsOn = false, debugOpen = false;
+const remember = (key, on) => { try { localStorage.setItem(key, on ? '1' : '0'); } catch {} };
+const recall = key => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
+const setLabels = on => { labelsOn = on; $('labels').classList.toggle('on', on); $('labels-toggle').setAttribute('aria-pressed', String(on)); remember('eight.labels', on); if (on) redrawLabels(); };
+const setDebug = on => { debugOpen = on; $('debug').classList.toggle('closed', !on); $('debug-toggle').setAttribute('aria-pressed', String(on)); remember('eight.debug', on); if (on) roomDebug(lastData); };
+$('labels-toggle').onclick = () => setLabels(!labelsOn);
 $('debug-toggle').onclick = () => setDebug(!debugOpen);
 
 // The debug view can be dragged by its header (or moved with the arrow keys); double-click puts it back in the corner.
@@ -261,18 +513,44 @@ $('debug-toggle').onclick = () => setDebug(!debugOpen);
   addEventListener('resize', place);
   place();
 }
-$('debug-phone').classList.toggle('hidden', webcam || isDemo);
-$('debug-webcam').classList.toggle('hidden', !webcam);
+$('debug-note').classList.toggle('hidden', webcam);
+$('debug-note').textContent = isDemo ? 'A scripted dancer instead of a camera: the wireframe below is what goes into the same tracking code as the webcam.' : 'Video stays on the phone. Check the phone\'s camera tab.';
+$('debug-webcam').classList.toggle('hidden', !webcam && !isDemo);
+$('debug-inputs').classList.toggle('hidden', isDemo);
+$('video').classList.toggle('hidden', isDemo);
 addEventListener('keydown', e => {
   if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
   if (k === 'd') setDebug(!debugOpen);
+  else if (k === 'l') setLabels(!labelsOn);
   else if (k === 'y') answer('accept');
   else if (k === 'n') answer('dismiss');
 });
+const fill = (dl, rows) => {
+  dl.textContent = '';
+  for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
+};
+const pct = x => `${Math.round(100 * x)}%`;
+function roomDebug(data) { // what the room carries, in every mode
+  const a = data?.agent, t = a?.timers, p = a?.proposal, b = data?.body, m = data?.movement, s = data?.space;
+  fill($('debug-room'), [
+    ['Status', `${$('status').textContent}${$('mode').textContent}${data ? ` · ${data.calibrated ? 'floor calibrated' : 'camera view'}` : ''}`],
+    ['Arms / legs', b ? `${pct(b.upper)} / ${pct(b.lower)} (30 s)` : '—'],
+    ['Limbs (8 colors)', b?.limbs ? Object.entries(b.limbs).map(([k, v]) => `${k} ${pct(v)}${b.limbsNow ? ` (now ${pct(b.limbsNow[k])})` : ''}`).join(' · ') : '—'],
+    ['Less used', b ? b.underused.join(' · ') || 'none' : '—'],
+    ['Movement', m ? [m.speed, m.size, m.direction, m.texture, m.lead && `lead ${m.lead}`, m.timing].filter(Boolean).join(' · ') : '—'],
+    ['Space', s ? `${s.zone} · ${s.level} · ${s.depth} · weight ${s.weight} · ${s.width} wide` : '—'],
+    ['Guide', a ? `${a.state}${p ? ` · ${p.kind} ${p.target}` : ''}` : '—'],
+    ['Idea', p?.kind === 'suggestion' ? `${p.title} — ${p.detail}` : '—'],
+    ['Why', p?.reason || '—'],
+    ['Timers', t ? `warm-up ${t.warmup}s · cooldown ${t.cooldown}s${t.answer != null ? ` · answer ${t.answer}s` : ''}` : '—'],
+    ['Holding', t ? Object.entries(t.holding).map(([k, v]) => `${k} ${v}s`).join(' · ') || 'none' : '—'],
+  ]);
+}
 
 let sticky = false, noticeKey = null, noticeProgress = null; // sticky: a camera problem or a taken session stays until the input changes
 const notice = (key, progress = null) => {
+  if (key === noticeKey && progress === noticeProgress) return;
   noticeKey = key; noticeProgress = progress;
   const [text, sub] = key ? T().notices[key] : ['', ''];
   $('notice').classList.toggle('hidden', !key); $('notice-text').textContent = text; $('notice-sub').textContent = sub;
@@ -282,22 +560,27 @@ const notice = (key, progress = null) => {
 // ---- language: EN (default) / KO, remembered per browser ----
 function applyLang() {
   document.documentElement.lang = lang;
-  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = T()[el.dataset.i18n];
-  for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = T()[el.dataset.i18nHtml];
-  $('privacy').innerHTML = webcam ? T().privacyWebcam : T().privacyPhone;
+  const w = T();
+  $('privacy').textContent = webcam || isDemo ? w.privacyWebcam : w.privacyPhone;
+  $('moves-link').textContent = w.moves;
   $('lang').textContent = lang === 'en' ? 'EN / KO' : 'KO / EN'; $('lang').setAttribute('aria-pressed', String(lang === 'ko'));
-  $('toggle').textContent = enabled ? T().on : T().off;
-  if (lastData) render(lastData); else [$('guide-title').textContent, $('guide-desc').textContent] = T().idle;
-  if (noticeKey) notice(noticeKey, noticeProgress);
+  $('labels-toggle').textContent = w.labels; $('debug-toggle').textContent = w.debug; $('demo-link').textContent = w.demo;
+  $('status').textContent = w.status[statusKey] ?? statusKey; setToggle();
+  redrawLabels(); showGuide(lastData?.agent);
+  if (noticeKey) { const key = noticeKey; noticeKey = null; notice(key, noticeProgress); }
 }
 $('lang').onclick = () => { lang = lang === 'en' ? 'ko' : 'en'; try { localStorage.setItem('eight.lang', lang); } catch {} applyLang(); };
+$('mode').textContent = ` · ${modeLabel}`;
 applyLang();
+setLabels(recall('eight.labels'));
+setDebug(recall('eight.debug'));
+document.fonts?.ready.then(redrawLabels); // underlines follow the text once the font is in
+connect();
+if (webcam || isDemo) startReader();
 
-if (webcam) startWebcam();
-
-// ---- this computer's webcam reads the dancer (the same tracking code as the phone, bundled) ----
-async function startWebcam() {
-  const { DisplayTracker, webPoseEvent, SKELETON_EDGES } = await import('/static/tracking.js');
+// ---- reading the dancer on this computer: the webcam, or (demo) a scripted dancer; the same tracking code as the phone ----
+async function startReader() {
+  const lib = await import('/static/tracking.js'), { DisplayTracker, webPoseEvent, SKELETON_EDGES } = lib;
   const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
   const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
   const tracker = new DisplayTracker(), video = $('video'), overlay = $('overlay');
@@ -305,9 +588,9 @@ async function startWebcam() {
 
   // the page's reading goes to the room: publish (alone) or camera (in a phone session)
   let sender = null, frame = null, phone = null, phoneAt = 0;
-  let recorder = null, chunks = [], recordingTake = null;
-  let captureState = 'Ready', captureStarted = 0;
-  let recordingLimit = null;
+  // Recording for the phone (in a phone session): the phone sends start / stop through the room, this page records the
+  // webcam and uploads the take; the server converts it and the phone can save it.
+  let recorder = null, chunks = [], recordingTake = null, captureState = 'Ready', captureStarted = 0, recordingLimit = null;
   const updateCapture = state => {
     captureState = state;
     const badge = $('record-indicator');
@@ -351,7 +634,7 @@ async function startWebcam() {
   };
   const isAsking = () => proposalKind === 'help';
   const openSender = () => {
-    sender = new WebSocket(`${wsBase}/${joined ? 'camera' : 'publish'}`);
+    sender = new WebSocket(`${wsBase}/${joined ? 'camera' : 'publish'}${isDemo ? '?demo=1' : ''}`); // a demo room asks sooner
     sender.onmessage = e => { try { const data = JSON.parse(e.data), p = data.phone; if (p) { phone = p; phoneAt = performance.now(); } if (data.type === 'record_command') void recordCommand(data); } catch {} };
     sender.onclose = e => {
       if (recorder?.state === 'recording') { recorder.stop(); updateCapture('Recording interrupted · connection lost'); }
@@ -361,7 +644,7 @@ async function startWebcam() {
   };
   openSender();
   setInterval(() => { if (sender?.readyState === WebSocket.OPEN && frame) sender.send(JSON.stringify(frame.packet)); }, 250);
-  if (!joined) setInterval(async () => { // phone sessions on this server without a camera: one click joins
+  if (!joined && !isDemo) setInterval(async () => { // phone sessions on this server without a camera: one click joins
     try {
       const { rooms } = await (await fetch('/movement/rooms')).json(), box = $('phone-line');
       box.textContent = rooms.length ? 'Phone session found: ' : '';
@@ -374,10 +657,50 @@ async function startWebcam() {
   const musicNow = tMs => (phone?.playing && phone.position !== null ? phone.position + (tMs - phoneAt) / 1000 : beat ? (tMs - beatFrom) / 1000 : null);
   const mirror = on => { for (const el of [video, overlay]) el.style.transform = on ? 'scaleX(-1)' : 'none'; };
 
-  let camera = false, delegate = '—';
+  let camera = false, delegate = '—', frames = 0, fps = 0, fpsAt = performance.now();
+  let inputLine = () => `${camera ? 'webcam' : video.src ? 'video file' : 'none'} · ${fps} fps · ${delegate}`;
+  /** One frame of the dancer through the tracker; then the O answer, the notices and the debug view. */
+  const read = (event, music) => {
+    frame = tracker.step(event, { ...music, asking: isAsking() });
+    if (frame.answer.yes) answer('accept');
+    setHold(isAsking() ? frame.answer.progress : 0);
+    if (!sticky) {
+      const s = frame.status?.state;
+      if (s === 'calibrating' && frame.pose) notice('standStill', Math.round(20 * frame.status.progress) / 20);
+      else if (!frame.pose && s !== 'tracking') notice('stepIn');
+      else notice(null);
+    }
+    frames++;
+    if (event.tMs - fpsAt >= 1000) { fps = Math.round(frames * 1000 / (event.tMs - fpsAt)); frames = 0; fpsAt = event.tMs; }
+    if (debugOpen) drawDebug(frame);
+  };
+  if (isDemo) { dance(); return; }
+
+  // The demo: a scripted dancer instead of the camera (app/src/tracking/figures.ts). It stands still to calibrate,
+  // dances with the arms only, answers the character with an O, then tries what it suggested. Everything after the
+  // figure is the real reading: the same tracker, words, guide and screen as with the webcam.
+  function dance() {
+    const { demoFigure, figureEvent, BEAT_S, DEMO_TRY_S } = lib, start = performance.now();
+    let cue = 'still', since = start, askedAt = null, seq = 0, idea = null, ideaAt = 0;
+    const go = (next, now) => { if (next !== cue) { cue = next; since = now; } };
+    mirror(true);
+    inputLine = () => `scripted dancer · ${cue} · ${fps} fps`;
+    setInterval(() => {
+      const now = performance.now(), t = (now - since) / 1000, asking = isAsking();
+      const offered = proposalKind === 'suggestion' ? lastData?.agent?.proposal?.target : null;
+      askedAt = asking ? askedAt ?? now : null;
+      if (cue === 'still' && t >= 4) go('dance', now);
+      else if (asking && cue !== 'yes' && now - askedAt >= 1500) go('yes', now); // a moment to see the question, then the O
+      else if (cue === 'yes' && !asking) { go('dance', now); idea = offered; ideaAt = now + 3000; } // the yes went through: read the idea first
+      else if (idea && cue === 'dance' && now >= ideaAt) { go(idea, now); idea = null; } // then try it
+      else if (!['still', 'dance', 'yes'].includes(cue) && t >= DEMO_TRY_S) go('dance', now);
+      read(figureEvent(now, ++seq, demoFigure(cue, (now - since) / 1000)), { musicT: (now - start) / 1000, beatS: BEAT_S, playing: true });
+    }, 1000 / 30);
+  }
+
   const startCamera = async () => {
     try {
-      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { camera = false; sticky = true; notice('insecureCamera'); return; }
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { camera = false; sticky = true; notice('insecureCamera'); return; } // a camera needs localhost or https
       video.removeAttribute('src'); video.loop = false;
       video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
       await video.play(); camera = true; mirror(true); tracker.reset(); sticky = false; notice(null);
@@ -409,7 +732,7 @@ async function startWebcam() {
   }
   await startCamera();
 
-  let last = -1, seq = 0, frames = 0, fps = 0, fpsAt = performance.now();
+  let last = -1, seq = 0;
   const loop = () => {
     requestAnimationFrame(loop);
     if (video.readyState < 2 || !video.videoWidth || video.currentTime === last) return;
@@ -417,50 +740,36 @@ async function startWebcam() {
     last = video.currentTime;
     const tMs = performance.now(), res = landmarker.detectForVideo(video, tMs), done = performance.now();
     const event = webPoseEvent({ tMs, seq: ++seq, nowMs: done, wallMs: Date.now(), latencyMs: done - tMs, aspect: video.videoWidth / video.videoHeight, image: res.landmarks?.[0], world: res.worldLandmarks?.[0] });
-    frame = tracker.step(event, { musicT: musicNow(tMs), beatS: beat, playing: joined ? (phone ? phone.playing : true) : true, asking: isAsking() });
-    if (frame.answer.yes) answer('accept');
-    $('answer-fill').setAttribute('stroke-dashoffset', String(113.1 * (1 - frame.answer.progress)));
-    if (!sticky) {
-      const s = frame.status?.state;
-      if (s === 'calibrating' && frame.pose) notice('standStill', frame.status.progress);
-      else if (!frame.pose && s !== 'tracking') notice('stepIn');
-      else notice(null);
-    }
-    frames++;
-    if (tMs - fpsAt >= 1000) { fps = Math.round(frames * 1000 / (tMs - fpsAt)); frames = 0; fpsAt = tMs; }
-    if (debugOpen) drawDebug(frame);
+    read(event, { musicT: musicNow(tMs), beatS: beat, playing: joined ? (phone ? phone.playing : true) : true });
   };
   loop();
 
   function drawDebug(f) {
-    overlay.width = video.videoWidth; overlay.height = video.videoHeight;
-    const g = overlay.getContext('2d'); g.clearRect(0, 0, overlay.width, overlay.height);
+    // the webcam's picture under its skeleton; the demo's figure alone (3:4, like the scripted frame)
+    const [w, h] = isDemo ? [480, 640] : [video.videoWidth, video.videoHeight];
+    if (overlay.width !== w || overlay.height !== h) { overlay.width = w; overlay.height = h; }
+    const g = overlay.getContext('2d'); g.clearRect(0, 0, w, h);
+    if (isDemo) { g.fillStyle = '#120f22'; g.fillRect(0, 0, w, h); }
     if (f.pose) {
       g.lineWidth = Math.max(3, overlay.width / 160); g.lineCap = 'round';
       for (const [a, b] of SKELETON_EDGES) {
         const p = f.pose.lm[a], q = f.pose.lm[b]; if (!p || !q) continue;
-        g.strokeStyle = p[2] < 0.5 || q[2] < 0.5 ? '#f078eb40' : '#f078eb';
+        g.strokeStyle = p[2] < 0.5 || q[2] < 0.5 ? '#b7a6f040' : '#b7a6f0';
         g.beginPath(); g.moveTo(p[0] * overlay.width, p[1] * overlay.height); g.lineTo(q[0] * overlay.width, q[1] * overlay.height); g.stroke();
       }
     }
-    const seg = f.usage.recent?.segments, lv = f.usage.recent?.level, parts = f.label?.parts ?? {}, a = lastAgent, t = a?.timers;
-    const pct = x => `${Math.round(100 * x)}%`;
-    const rows = [
+    const seg = f.usage.recent?.segments, lv = f.usage.recent?.level, parts = f.label?.parts ?? {};
+    fill($('debug-values'), [
       ['Recording', captureState],
-      ['Input', `${camera ? 'webcam' : video.src ? 'video file' : 'none'} · ${fps} fps · ${delegate}`],
+      ['Input', inputLine()],
       ['Tracker', `${f.status?.state ?? '—'}${f.status?.state === 'calibrating' ? ` ${pct(f.status.progress)}` : ''}`],
       ['Parts (30 s)', seg ? Object.entries(seg).map(([k, v]) => `${k} ${pct(v)}`).join(' · ') : '—'],
-      ['Unknown', Object.entries(parts).filter(([, p]) => p.kind === null).map(([k]) => `${k} (unknown)`).join(' · ') || 'none'],
+      ['Unknown', Object.entries(parts).filter(([, p]) => p.kind === null).map(([k]) => k).join(' · ') || 'none'],
       ['Height', lv ? `low ${pct(lv.low)} · mid ${pct(lv.mid)} · high ${pct(lv.high)}` : '—'],
       ['Lacking', f.lacking.join(' · ') || 'none'],
       ['Tried (8 ct)', (f.packet.explored ?? []).join(' · ') || 'none'],
-      ['Guide', a ? `${a.state}${a.proposal ? ` · ${a.proposal.kind} ${a.proposal.target}` : ''}` : '—'],
-      ['Timers', t ? `warm-up ${t.warmup}s · cooldown ${t.cooldown}s${t.answer !== null ? ` · answer ${t.answer}s` : ''}` : '—'],
-      ['Holding', t ? Object.entries(t.holding).map(([k, v]) => `${k} ${v}s`).join(' · ') || 'none' : '—'],
       ['O answer', f.answer.progress > 0 ? pct(f.answer.progress) : isAsking() ? 'waiting for an O' : '—'],
-    ];
-    const dl = $('debug-values'); dl.textContent = '';
-    for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
+    ]);
   }
 }
 </script>

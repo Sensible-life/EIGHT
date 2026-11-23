@@ -53,14 +53,15 @@ class ProposalGenerator(Protocol):
 class LocalPromptGenerator:
     """Starter policy; these examples are creative prompts, not prescriptions."""
     PROMPTS = {
-        'arm_l': ProposalText('Start with your left arm', 'Try a wider reach, then connect it to your next move.', '↗'),
-        'arm_r': ProposalText('Start with your right arm', 'Try a wider reach, then connect it to your next move.', '↗'),
-        'leg_l': ProposalText('Lead with your left leg', 'Add a small step and explore a new direction.', '↘'),
-        'leg_r': ProposalText('Lead with your right leg', 'Add a small step and explore a new direction.', '↘'),
-        'low': ProposalText('Go low', 'Bring your movement closer to the floor for the next counts.', '↓'),
-        'high': ProposalText('Go high', 'Rise up and reach above your usual height.', '↑'),
-        'left': ProposalText('Explore your left side', 'Travel a few steps to your left and dance there.', '←'),
-        'right': ProposalText('Explore your right side', 'Travel a few steps to your right and dance there.', '→'),
+        # The display's character says the title; display.html translates these titles by target.
+        'arm_l': ProposalText('How about trying to use your left arm?', 'Try a wider reach, then connect it to your next move.', '↗'),
+        'arm_r': ProposalText('How about trying to use your right arm?', 'Try a wider reach, then connect it to your next move.', '↗'),
+        'leg_l': ProposalText('How about trying to use your left leg?', 'Add a small step and explore a new direction.', '↘'),
+        'leg_r': ProposalText('How about trying to use your right leg?', 'Add a small step and explore a new direction.', '↘'),
+        'low': ProposalText('How about trying to go low?', 'Bring your movement closer to the floor for the next counts.', '↓'),
+        'high': ProposalText('How about trying to reach up high?', 'Rise up and reach above your usual height.', '↑'),
+        'left': ProposalText('How about trying to move to your left side?', 'Travel a few steps to your left and dance there.', '←'),
+        'right': ProposalText('How about trying to move to your right side?', 'Travel a few steps to your right and dance there.', '→'),
     }
 
     def generate(self, observation: Observation, target: str) -> ProposalText:
@@ -244,4 +245,24 @@ class MovementGuide:
             'answer': left(self.answer_window, self.pending['createdAt']) if self.webcam and self.pending and self.pending['kind'] == 'help' else None,
         }
         return {'state': state, 'proposal': proposal, 'mode': 'local', 'timers': timers,
-                'target': self.response_target if state == 'explored' else None}
+                'target': self.response_target if state == 'explored' else None,
+                'soon': self.soon(now) if state == 'observing' else 0.0}
+
+    def soon(self, now: float) -> float:
+        """How far the guide is towards asking (0..1): the slowest of the warm-up, the cooldown, the longest-held lack
+        (against the persistence) and, for the phone, its trigger. The display lets the character show up gradually
+        with it; it says nothing about which target, and 0 means no question is on its way."""
+        rules = self.rules()
+        held = [now - since for target, since in self.holding.items() if now - self.target_offered.get(target, float('-inf')) >= rules['target_cooldown']]
+        if self.started is None or not held:
+            return 0.0
+        part = lambda done, span: 1.0 if span <= 0 else max(0.0, min(1.0, done / span))
+        steps = [part(now - self.started, rules['warmup']), part(max(held), rules['persistence'])]
+        if self.last_offered is not None:
+            steps.append(part(now - self.last_offered, rules['cooldown']))
+        if not self.webcam:  # the phone also waits for a loop played over and over, or long enough without a save
+            trigger = self.repetitions / self.repeat_threshold if self.repeat_threshold else 0.0
+            if self.save_revision is not None and self.no_save_after > 0:
+                trigger = max(trigger, self.active_without_save / self.no_save_after)
+            steps.append(min(1.0, trigger))
+        return round(min(steps), 2)

@@ -18,9 +18,10 @@
 | `src/tracking/` | React 없는 TypeScript 로직: 스무딩, 캘리브레이션, 부위 활동, 높이, 집계 창, 제안, 세션, 스토어. `scripts/load-ts.cjs`로 node에서 바로 테스트 |
 | `src/components/tracking/` | 카메라 탭, 관절 선 오버레이, 부위 막대, 분석 탭 카드 |
 | `src/tracking/config.ts` | 모든 임계값. id403 `config/default.yaml`과 공유하는 섹션은 키·값이 같아야 한다(정답 테스트가 검사). `app` 섹션은 이 앱 전용이며 `min_bpm: 30` / `max_bpm: 300`을 포함한다. `moves`, `labels`, `answer`, `targets`도 앱 전용이다 |
-| `src/tracking/labels.ts` | 디스플레이용 말: 최근 4초의 부위별 동작(reach·circle…), 질감, 박자, 공간(좌·중·우, 높이, 앞뒤). 충분히 보이지 않은 부위는 "모름"(null)이다. 웹캠 페이지의 `movement.js`를 옮긴 것 |
+| `src/tracking/labels.ts` | 디스플레이용 말: 최근 4초의 부위별 동작(reach·circle(어깨 또는 팔꿈치 중심)·…, 다리는 step: 한 발로 버티는 동안 다른 발이 떨어졌다 디딤), 질감, 박자, 공간(좌·중·우, 높이, 앞뒤). 충분히 보이지 않은 부위는 "모름"(null)이다. 웹캠 페이지의 `movement.js`를 옮긴 것 |
 | `src/tracking/answer.ts` | 머리 위 O 3초 = 캐릭터의 질문에 '예'. 묻는 동안 시작한 O만 센다 |
-| `src/tracking/targets.ts` | 캐릭터가 짚을 대상(팔다리·low/high·left/right)의 부족(최근 30초)과 해봄(8카운트) |
+| `src/tracking/targets.ts` | 캐릭터가 짚을 대상(팔다리·low/high·left/right)의 부족(최근 30초)과 해봄(8카운트), 8의 색에 쓰는 팔다리별 비율(`limbShares`) |
+| `src/tracking/figures.ts` | 대본대로 움직이는 가상 댄서: 디스플레이 데모(카메라 대신)와 동작 설명 페이지(`/display/moves`). `readMove`는 실제 라벨러로 읽은 결과 |
 | `src/tracking/display.ts` | 디스플레이 한 프레임: 웹캠 프레임 → 세션·라벨·O·히트맵 → 중계 패킷(`buildPacket`). 서버 페이지가 쓰는 묶음의 입구 |
 
 ## 명령 (app/에서)

@@ -65,7 +65,9 @@ export type TrackingConfig = {
     sharp: number; // peak speed over mean speed
     lead_share: number; // below this no single part leads
     beat_near: number; // a speed peak this close to a beat (fraction of a beat) is on it
-    limb: { circle_rad: number; reach: number; swing_rad: number }; // turn around the root; change of extension (0..1); arc
+    limb: { circle_rad: number; reach: number; swing_rad: number }; // turn around the root (or the elbow / knee); change of extension (0..1); arc
+    // a foot's step (torso lengths): still enough to stand on; rise off the floor; move along it; a higher rise is a kick or a knee lift; steps in the window
+    step: { plant_speed: number; lift: number; move: number; max_lift: number; min_steps: number };
     torso: { shift: number; jump: number; feet_up: number; drop: number }; // hips over still feet; hip rise; ankle rise; leg length vs standing
     calibrate_s: number; // standing still this long sets the home spot
     space: { zone: number; near: number; far: number; weight: number }; // sideways offset; torso size vs home; hips off the feet
@@ -130,6 +132,7 @@ export const DEFAULT_CONFIG: TrackingConfig = {
     size: { small: 0.35, large: 1.0 },
     travel: 0.35, sharp: 2.6, lead_share: 0.34, beat_near: 0.2,
     limb: { circle_rad: 1.5 * Math.PI, reach: 0.3, swing_rad: 0.5 },
+    step: { plant_speed: 0.6, lift: 0.1, move: 0.15, max_lift: 0.5, min_steps: 2 },
     torso: { shift: 0.2, jump: 0.2, feet_up: 0.1, drop: 0.75 },
     calibrate_s: 1.5,
     space: { zone: 0.8, near: 1.2, far: 0.83, weight: 0.25 },

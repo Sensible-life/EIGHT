@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG, type TrackingConfig } from './config';
 import { MovementLabeler, type MovementLabel, type SpaceLabel, type Zone } from './labels';
 import { LiveSession } from './session';
 import { poseFromEvent } from './store';
-import { exploredTargets, lackingTargets, ringShares, type Target } from './targets';
+import { exploredTargets, lackingTargets, limbShares, ringShares, type Limb, type Target } from './targets';
 import { ImageHeatmap } from '../projection/heatmap';
 import type { OutMessage, PoseEvent, PoseMessage, StatusMessage, UsageMessage, WindowName } from './types';
 
@@ -15,6 +15,8 @@ export { webPoseEvent } from './webEvent';
 export { SKELETON_EDGES } from './segments';
 export { DEFAULT_CONFIG } from './config';
 export { TARGET_ORDER, type Target } from './targets';
+// The scripted dancer: the demo (no camera) and the moves page.
+export { MOVES, moveFigure, readMove, demoFigure, figureEvent, FIGURE_ASPECT, BEAT_S, DEMO_TRY_S, type DemoCue, type Move } from './figures';
 
 export type DisplayPacket = {
   active: boolean;
@@ -24,7 +26,9 @@ export type DisplayPacket = {
   movement?: Pick<MovementLabel, 'speed' | 'size' | 'direction' | 'texture' | 'lead' | 'timing'>;
   parts?: MovementLabel['parts'];
   space?: SpaceLabel;
-  body?: { upper: number; lower: number; underused: Target[] }; // underused: what the character may point out
+  // limbs: each limb's share of the movement over the recent window, limbsNow over the last 8-count (the 8's colors mix
+  // the two); underused: what the character may point out (recent window)
+  body?: { upper: number; lower: number; limbs: Record<Limb, number>; limbsNow?: Record<Limb, number>; underused: Target[] };
   explored?: Target[]; // tried in the last 8-count
   answering?: boolean; // an overhead O is being held
 };
@@ -44,8 +48,12 @@ export function buildPacket(i: PacketInput, cfg: TrackingConfig): DisplayPacket 
     p.parts = i.label.parts;
     if (i.label.space) p.space = i.label.space;
   }
-  const rings = ringShares(i.usage.recent);
-  if (rings) p.body = { ...rings, underused: lackingTargets(i.usage.recent, i.zones30, cfg) };
+  const rings = ringShares(i.usage.recent), limbs = limbShares(i.usage.recent);
+  if (rings && limbs) {
+    p.body = { ...rings, limbs, underused: lackingTargets(i.usage.recent, i.zones30, cfg) };
+    const now = limbShares(i.usage['8count']); // null when the limbs were still for the whole 8-count
+    if (now) p.body.limbsNow = now;
+  }
   p.explored = exploredTargets(i.usage['8count'], i.zones8, cfg);
   if (i.answering) p.answering = true;
   return p;
