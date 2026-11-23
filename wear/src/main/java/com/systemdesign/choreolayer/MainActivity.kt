@@ -12,6 +12,7 @@ import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
@@ -152,6 +153,22 @@ class MainActivity : Activity(), MessageClient.RpcService {
             if (suggestionId.isNotEmpty() && suggestionId != answeredSuggestion) {
                 val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
                 box.addView(TextView(this).apply { text = suggestion?.optString("title")?.take(100); setTextColor(ink); gravity = Gravity.CENTER })
+                val reason = suggestion?.optString("reason")?.take(400).orEmpty()
+                if (suggestion?.optString("kind") == "suggestion" && reason.isNotBlank()) {
+                    val explanation = TextView(this).apply {
+                        text = reason; setTextColor(ink); gravity = Gravity.CENTER
+                        visibility = View.GONE
+                    }
+                    box.addView(Button(this).apply {
+                        text = "Why?"; styleButton(this, false)
+                        setOnClickListener {
+                            val show = explanation.visibility == View.GONE
+                            explanation.visibility = if (show) View.VISIBLE else View.GONE
+                            text = if (show) "Hide" else "Why?"
+                        }
+                    }, buttonSpacing())
+                    box.addView(explanation)
+                }
                 val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
                 for (choice in listOf("accept", "dismiss")) buttons.addView(Button(this).apply {
                     text = if (suggestion?.optString("kind") == "help") { if (choice == "accept") "Yes" else "No" } else { if (choice == "accept") "Try" else "Later" }; styleButton(this, choice == "accept")

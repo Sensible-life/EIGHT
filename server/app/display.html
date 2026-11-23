@@ -35,7 +35,7 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
   <section class="dashboard" aria-label="Live space and creative guide">
     <article class="card"><div class="card-head"><div><div class="micro">01 / Space</div><h2>Where you moved</h2></div><span id="calibration" class="info">Waiting</span></div><div class="heat-layout"><div id="heat" class="heat" aria-label="Foot position heatmap"></div><div class="heat-copy">A trace of your movement through the space.<div class="legend"></div><small>Less <span style="float:right">More</span></small></div></div><p class="note" style="margin:12px 0 0;max-width:none">Estimated foot positions; occluded feet are excluded.</p></article>
     <article class="card"><div class="card-head"><div><div class="micro">02 / Movement</div><h2>How you moved</h2></div><span class="info">Last few seconds</span></div><div id="movement" class="tags"></div><p class="note" style="margin:12px 0 0;max-width:none">Descriptions of the recent movement, not a score.</p></article>
-    <article class="card guide"><div class="guide-content"><div class="guide-label"><div class="micro">03 / Creative guide</div><button id="toggle" class="toggle" type="button" aria-pressed="true">Suggestions on</button></div><div id="guide-title" class="guide-title">Space to explore.</div><div id="guide-desc" class="guide-desc">A movement idea can appear here when tracking is ready.</div><div id="actions" class="actions hidden"><button class="button" id="accept" type="button">Try this</button><button class="button secondary" id="dismiss" type="button">Not now</button></div><div id="engine" class="info" style="margin-top:12px">LOCAL GUIDE · PROTOTYPE</div></div></article>
+    <article class="card guide"><div class="guide-content"><div class="guide-label"><div class="micro">03 / Creative guide</div><button id="toggle" class="toggle" type="button" aria-pressed="true">Suggestions on</button></div><div id="guide-title" class="guide-title">Space to explore.</div><div id="guide-desc" class="guide-desc">A movement idea can appear here when tracking is ready.</div><div id="why" class="hidden"><button id="why-toggle" class="toggle" type="button" aria-expanded="false">Why this suggestion?</button><p id="why-text" class="note hidden"></p></div><div id="actions" class="actions hidden"><button class="button" id="accept" type="button">Try this</button><button class="button secondary" id="dismiss" type="button">Not now</button></div><div id="engine" class="info" style="margin-top:12px">LOCAL GUIDE · PROTOTYPE</div></div></article>
   </section>
 </main>
 <footer class="foot"><span>Video and pose landmarks stay on your phone.<br>Only movement aggregates are shared on your local network.</span><a href="/display/demo">Open demo ↗</a></footer>
@@ -47,13 +47,13 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
   const room = isDemo ? 'd8d8d8d8d8d8d8d8' : location.pathname.split('/').pop();
   const wsBase = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/projection/ws/${room}`;
   const heat = $('heat'); for (let i=0; i<64; i++) { const cell=document.createElement('div'); cell.className='cell'; heat.appendChild(cell); }
-  let view, publisher, timer, demoTimer, reconnectTimer, activeProposal = null, enabled = true;
+  let view, publisher, timer, demoTimer, reconnectTimer, activeProposal = null, reasonProposal = null, enabled = true;
   $('mode').textContent = isDemo ? 'DEMO · SIMULATED' : 'LIVE SPACE';
   const clear = (message) => {
     $('status').textContent = message; $('dot').classList.remove('live'); $('calibration').textContent = 'Waiting';
     $('upper').textContent = $('lower').textContent = '—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74);
     for (const cell of heat.children) cell.style.background = '#302538';
-    movement(null); activeProposal = null; $('actions').classList.add('hidden'); $('nudge').classList.add('hidden'); $('guide-title').textContent='Space to explore.'; $('guide-desc').textContent='A movement idea can appear here when tracking is ready.';
+    movement(null); activeProposal = null; reasonProposal = null; $('why').classList.add('hidden'); $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); $('actions').classList.add('hidden'); $('nudge').classList.add('hidden'); $('guide-title').textContent='Space to explore.'; $('guide-desc').textContent='A movement idea can appear here when tracking is ready.';
   };
   const PART = {head:'Head',torso:'Torso',arm_l:'Left arm',arm_r:'Right arm',leg_l:'Left leg',leg_r:'Right leg','whole body':'Whole body'};
   const WORDS = new Set(['still','slow','medium','fast','small','large','in place','left','right','up','down','side to side','up-down','smooth','sharp','on beat','off beat','mixed',...Object.keys(PART)]);
@@ -68,6 +68,7 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
     if (!box.children.length) { const tag = document.createElement('span'); tag.className = 'info'; tag.textContent = 'Appears while movement is tracked.'; box.appendChild(tag); }
   }
   const send = obj => { if (view && view.readyState === WebSocket.OPEN) view.send(JSON.stringify(obj)); };
+  $('why-toggle').onclick = () => { const open = $('why-text').classList.toggle('hidden') === false; $('why-toggle').setAttribute('aria-expanded', String(open)); };
   $('toggle').onclick = () => { if (!view || view.readyState !== WebSocket.OPEN) return; send({type:'agent_enabled',enabled:!enabled}); };
   for (const [id, choice] of [['accept','accept'],['dismiss','dismiss']]) $(id).onclick = () => { if (activeProposal) send({type:'agent_response',proposalId:activeProposal,choice}); };
   function render(data) {
@@ -86,6 +87,9 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
     } else { $('upper').textContent=$('lower').textContent='—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74); }
     const agent=data.agent; const proposal=agent?.proposal; activeProposal=proposal?.id || null;
     if (agent) { enabled=agent.state!=='paused'; $('toggle').textContent=enabled?'Suggestions on':'Suggestions off'; $('toggle').setAttribute('aria-pressed',String(enabled)); }
+    if (reasonProposal !== proposal?.id) { reasonProposal = proposal?.id; $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); }
+    $('why').classList.toggle('hidden', proposal?.kind !== 'suggestion' || !proposal?.reason);
+    $('why-text').textContent = proposal?.reason || '';
     $('actions').classList.toggle('hidden',!proposal);
     $('nudge').classList.toggle('hidden',proposal?.kind!=='help');
     $('accept').textContent=proposal?.kind==='help'?'Yes, please':'Try this'; $('dismiss').textContent=proposal?.kind==='help'?'Not now':'Skip';

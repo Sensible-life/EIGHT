@@ -22,7 +22,7 @@ const BOX_ASPECT = 3 / 4; // upright 4:3 camera frame, no crop
 const DETECTOR = detectorJson();
 const PLAN_NOTE = { eights: '', tempo: "8 beats based on BPM", fixed: `No beat data · ${DEFAULT_CONFIG.aggregate.windows['8count_s']}-second intervals`, rolling: '' } as const;
 
-type Props = { store: LiveTrackingStore; playing: boolean; onPlay: () => void; server: string; onSave?: () => void; saved?: boolean; loop: { start: number; end: number } | null; saveRevision: number; missionTitle?: string; canRecord: boolean; recordCommand: number; onAgent: (proposal: DisplayProposal | null) => void; agentChoice: { id: string; accept: boolean } | null; onVideo: (event: { state: 'started' | 'saved' | 'error' | 'pending'; value: string }) => void };
+type Props = { projectId: string; sessionId: string; store: LiveTrackingStore; playing: boolean; onPlay: () => void; server: string; onSave?: () => void; saved?: boolean; loop: { start: number; end: number } | null; saveRevision: number; missionTitle?: string; canRecord: boolean; recordCommand: number; onAgent: (proposal: DisplayProposal | null) => void; agentChoice: { id: string; accept: boolean } | null; onVideo: (event: { state: 'started' | 'saved' | 'error' | 'pending'; value: string }) => void };
 
 function statusText(view: TrackingView, phase: StartPhase, now: number, playing: boolean): string {
   if (view.error) return view.error;
@@ -39,7 +39,7 @@ const hudText = ({ perf, engine }: TrackingView) =>
   perf ? `${perf.pose_fps}fps · ${perf.lat_ms.capture_pose.p50 ?? '–'} ms · detection ${Math.round(perf.detect_rate * 100)}% · ${engine.delegate}` : '';
 
 /** The session's camera tab: preview + skeleton, what has been used, and [춤 시작]. */
-export default function CameraTab({ store, playing, onPlay, server, onSave, saved, loop, saveRevision, missionTitle, canRecord, recordCommand, onAgent, agentChoice, onVideo }: Props) {
+export default function CameraTab({ projectId, sessionId, store, playing, onPlay, server, onSave, saved, loop, saveRevision, missionTitle, canRecord, recordCommand, onAgent, agentChoice, onVideo }: Props) {
   const view = useSyncExternalStore(store.subscribe, store.getView);
   const { width, fontScale } = useWindowDimensions();
   const sideBySide = width >= 360 && fontScale <= 1.2;
@@ -197,7 +197,7 @@ export default function CameraTab({ store, playing, onPlay, server, onSave, save
       {!!videoMessage && <Text style={s.small}>{videoMessage}</Text>}
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: showProjection }} onPress={() => setShowProjection(!showProjection)} style={s.projectionToggle}><View><Text style={s.projectionTitle}>Connect projection display</Text><Text style={s.small}>Projector · floor area</Text></View><Text style={s.secondaryText}>{showProjection ? "Collapse −" : "Set up +"}</Text></Pressable>
       <View style={showProjection ? { gap: 10 } : { display: 'none' }}>
-      <ProjectionCard store={store} server={server} playing={playing} recording={videoState === 'recording'} loop={loop} saveRevision={saveRevision} missionTitle={missionTitle} corners={corners} onAgent={onAgent} choice={agentChoice} />
+      <ProjectionCard projectId={projectId} sessionId={sessionId} store={store} server={server} playing={playing} recording={videoState === 'recording'} loop={loop} saveRevision={saveRevision} missionTitle={missionTitle} corners={corners} onAgent={onAgent} choice={agentChoice} />
       <Pressable accessibilityRole="button" onPress={() => { setCorners([]); setCalibratingFloor(true); }} style={s.secondary}><Text style={s.secondaryText}>Calibrate floor projection</Text></Pressable>
       <Text style={s.small}>{calibratingFloor ? `Tap the projection corners in the camera view: top left → top right → bottom right → bottom left. (${corners.length}/4)` : corners.length === 4 ? "Floor area set. Recalibrate if the camera or projector moves." : "Select the four projector corners in the camera view to align the floor display."}</Text>
       </View>

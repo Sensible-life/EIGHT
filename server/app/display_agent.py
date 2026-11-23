@@ -24,6 +24,8 @@ class Observation:
     loop_end: float | None = None
     save_revision: int | None = None
     playing: bool | None = None
+    project_usage: dict[str, float] | None = None
+    overall_usage: dict[str, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -39,16 +41,32 @@ class ProposalGenerator(Protocol):
 
 
 class LocalPromptGenerator:
-    """Starter policy; these examples are creative prompts, not prescriptions."""
-    PROMPTS = {
-        'arm_l': ProposalText('Start with your left arm', 'Try a wider reach, then connect it to your next move.', '↗'),
-        'arm_r': ProposalText('Start with your right arm', 'Try a wider reach, then connect it to your next move.', '↗'),
-        'leg_l': ProposalText('Lead with your left leg', 'Add a small step and explore a new direction.', '↘'),
-        'leg_r': ProposalText('Lead with your right leg', 'Add a small step and explore a new direction.', '↘'),
+    """Combine movement prompts while rotating ideas within a session."""
+    PARTS = {'arm_l': 'left arm', 'arm_r': 'right arm', 'leg_l': 'left leg', 'leg_r': 'right leg'}
+    IDEAS = {
+        'arm': (
+            ('Reach outward', 'Make it wide, then connect it to your next move.', '↗'),
+            ('Draw a circle', 'Keep it close to your body, then open outward.', '◯'),
+            ('Push and release', 'Change direction as you move into the next step.', '→'),
+            ('Start a wave', 'Let the motion travel into another body part.', '〜'),
+        ),
+        'leg': (
+            ('Take a side step', 'Make it wide, then connect it to your next move.', '↔'),
+            ('Step and pause', 'Keep the step small, then hold a pose.', '■'),
+            ('Shift your weight', 'Change direction as you move into the next step.', '↘'),
+            ('Trace a circle', 'Let the step lead into a turn.', '◯'),
+        ),
     }
 
+    def __init__(self):
+        self.generated = {target: 0 for target in TARGETS}
+
     def generate(self, observation: Observation, target: str) -> ProposalText:
-        return self.PROMPTS[target]
+        ideas = self.IDEAS[target.split('_')[0]]
+        index = self.generated[target]
+        self.generated[target] += 1
+        action, detail, symbol = ideas[index % len(ideas)]
+        return ProposalText(f'{action} with your {self.PARTS[target]}', detail, symbol)
 
 
 class MovementGuide:
@@ -76,6 +94,7 @@ class MovementGuide:
         self.repetitions = 0
         self.repeat_ready = False
         self.last_observation: Observation | None = None
+        self.target_feedback = {target: 0 for target in TARGETS}
 
     def observe(self, observation: Observation, now: float) -> dict:
         playing = observation.playing if observation.playing is not None else observation.active
@@ -126,10 +145,24 @@ class MovementGuide:
         trigger = 'repetition' if self.repeat_ready else 'no_save' if observation.save_revision is not None and self.active_without_save >= self.no_save_after else None
         if not trigger:
             return self.public(now)
-        target = ready[0]
+        # Prefer targets the dancer has accepted over repeatedly dismissed ones.
+        # Longer observed evidence breaks ties, followed by the stable target order.
+        def priority(item: str):
+            project = observation.project_usage or {}
+            overall = observation.overall_usage or {}
+            # Missing history is neutral, not evidence that a body part was unused.
+            return (self.target_feedback[item], -project.get(item, .5),
+                    -overall.get(item, .5), now - self.holding[item], -TARGETS.index(item))
+        target = max(ready, key=priority)
+        part = LocalPromptGenerator.PARTS[target]
+        reason = (f'Your {part} was identified as less active in the recent tracking window. '
+                  + ('The selected loop was played repeatedly.' if trigger == 'repetition'
+                     else 'There was no new save during the recent active playback period.'))
+        if observation.project_usage and target in observation.project_usage:
+            reason += ' Earlier tracked sessions in this project were also considered when choosing between observed targets.'
         self.pending = {'id': uuid4().hex, 'kind': 'help', 'target': target,
                         'title': 'Need some help?', 'detail': 'Want a movement idea?',
-                        'symbol': '✦', 'trigger': trigger, 'createdAt': now}
+                        'symbol': '✦', 'trigger': trigger, 'reason': reason, 'createdAt': now}
         self.last_offered = now
         self.target_offered[target] = now
         self.holding.pop(target, None)
@@ -148,12 +181,15 @@ class MovementGuide:
                 text = self.generator.generate(self.last_observation, self.pending['target'])
                 if not isinstance(text, ProposalText) or not all(isinstance(value, str) and 0 < len(value) <= limit for value, limit in ((text.title, 100), (text.detail, 200), (text.symbol, 8))):
                     raise ValueError('Invalid proposal')
-                self.pending = {'id': uuid4().hex, 'kind': 'suggestion', 'target': self.pending['target'], 'title': text.title, 'detail': text.detail, 'symbol': text.symbol, 'createdAt': now}
+                self.pending = {'id': uuid4().hex, 'kind': 'suggestion', 'target': self.pending['target'], 'title': text.title, 'detail': text.detail, 'symbol': text.symbol, 'reason': self.pending['reason'], 'createdAt': now}
             except Exception:
                 self.pending = None
                 self.response = 'unavailable'
                 self.response_until = now + 5
         else:
+            target = self.pending['target']
+            delta = 1 if choice == 'accept' else -1
+            self.target_feedback[target] = max(-3, min(3, self.target_feedback[target] + delta))
             self.pending = None
             self.response = 'accepted' if choice == 'accept' else 'dismissed'
             self.response_until = now + 5

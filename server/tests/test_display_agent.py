@@ -1,10 +1,36 @@
 import unittest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from app.display_agent import MovementGuide, Observation
+from app.display_agent import LocalPromptGenerator, MovementGuide, Observation
 from app.main import app
 
 class GuideTests(unittest.TestCase):
+    def test_project_history_prioritizes_underused_target(self):
+        guide = MovementGuide(warmup=0, persistence=0, no_save_after=0)
+        observation = Observation(True, .5, .5, ('arm_l', 'leg_r'), save_revision=0,
+                                  project_usage={'arm_l': .8, 'leg_r': .1},
+                                  overall_usage={'arm_l': .1, 'leg_r': .8})
+        self.assertEqual(guide.observe(observation, 0)['proposal']['target'], 'leg_r')
+
+    def test_feedback_changes_target_choice_and_prompts_rotate(self):
+        guide = MovementGuide(warmup=0, persistence=0, no_save_after=0, cooldown=0, target_cooldown=0)
+        observation = Observation(True, .5, .5, ('arm_l', 'leg_r'), save_revision=0)
+        first = guide.observe(observation, 0)['proposal']
+        self.assertEqual(first['target'], 'arm_l')
+        self.assertTrue(guide.respond(first['id'], 'dismiss', 0.1))
+        second = guide.observe(observation, 6)['proposal']
+        self.assertEqual(second['target'], 'leg_r')
+        self.assertTrue(guide.respond(second['id'], 'accept', 6.1))
+        suggestion = guide.public(6.1)['proposal']
+        self.assertIn('right leg', suggestion['title'])
+        self.assertTrue(guide.respond(suggestion['id'], 'accept', 6.2))
+        self.assertEqual(guide.observe(observation, 12)['proposal']['target'], 'leg_r')
+        generator = LocalPromptGenerator()
+        one = generator.generate(observation, 'arm_l')
+        two = generator.generate(observation, 'arm_l')
+        self.assertNotEqual(one.title, two.title)
+        self.assertIn('left arm', two.title)
+
     def setUp(self):
         self.guide = MovementGuide(warmup=0, persistence=0, no_save_after=1, cooldown=30, target_cooldown=60, proposal_lifetime=10)
         self.seen = Observation(True, .7, .3, ('leg_l',), save_revision=0)
@@ -21,6 +47,8 @@ class GuideTests(unittest.TestCase):
         self.assertTrue(self.guide.respond(ask['id'], 'accept', 1.1))
         suggestion = self.guide.public(1.1)['proposal']
         self.assertEqual(suggestion['kind'], 'suggestion')
+        self.assertIn('left leg', suggestion['reason'])
+        self.assertIn('no new save', suggestion['reason'])
         self.assertNotEqual(ask['id'], suggestion['id'])
         self.assertFalse(self.guide.respond(ask['id'], 'dismiss', 1.2))
         self.assertTrue(self.guide.respond(suggestion['id'], 'accept', 1.2))

@@ -5,11 +5,36 @@ import { floorTransform, ImageHeatmap, type Point } from '../../projection/heatm
 import { bodySummary } from '../../projection/bodySummary';
 import type { LiveTrackingStore } from '../../tracking/store';
 import { C } from '../../theme';
+import { useLibrary } from '../../state/LibraryProvider';
+import type { Session } from '../../state/model';
 import { ui } from '../../ui/Kit';
 
-export type DisplayProposal = { id: string; kind: 'help' | 'suggestion'; title: string; detail: string; symbol: string };
+export type DisplayProposal = { id: string; kind: 'help' | 'suggestion'; title: string; detail: string; symbol: string; reason?: string };
+const parts = ['arm_l', 'arm_r', 'leg_l', 'leg_r'] as const;
+function usageHistory(sessions: Session[]) {
+  const sums = Object.fromEntries(parts.map(part => [part, { score: 0, observed: 0 }])) as Record<typeof parts[number], { score: number; observed: number }>;
+  for (const session of sessions) {
+    if (!session.tracking || session.tracking.trackedMs < 30000) continue;
+    for (const part of parts) {
+      sums[part].score += session.tracking.totals.score[part] ?? 0;
+      sums[part].observed += session.tracking.totals.observed[part] ?? 0;
+    }
+  }
+  // Compare only if all four parts were observed; absence is not inactivity.
+  if (parts.some(part => sums[part].observed === 0)) return undefined;
+  const values = parts.map(part => Math.max(0, sums[part].score / sums[part].observed));
+  const total = values.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return undefined;
+  return Object.fromEntries(parts.map((part, index) => [part, values[index] / total]));
+}
 function roomId() { return Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join(''); }
-export default function ProjectionCard({ store, server, playing, recording, corners, loop, saveRevision, missionTitle, onAgent, choice }: { store: LiveTrackingStore; server: string; playing: boolean; recording: boolean; corners: Point[]; loop: { start: number; end: number } | null; saveRevision: number; missionTitle?: string; onAgent: (proposal: DisplayProposal | null) => void; choice: { id: string; accept: boolean } | null }) {
+export default function ProjectionCard({ projectId, sessionId, store, server, playing, recording, corners, loop, saveRevision, missionTitle, onAgent, choice }: { projectId: string; sessionId: string; store: LiveTrackingStore; server: string; playing: boolean; recording: boolean; corners: Point[]; loop: { start: number; end: number } | null; saveRevision: number; missionTitle?: string; onAgent: (proposal: DisplayProposal | null) => void; choice: { id: string; accept: boolean } | null }) {
+  const { data } = useLibrary();
+  const historyRef = useRef<{ projectUsage?: Record<string, number>; overallUsage?: Record<string, number> }>({});
+  useEffect(() => {
+    const past = data.sessions.filter(session => session.id !== sessionId);
+    historyRef.current = { projectUsage: usageHistory(past.filter(session => session.projectId === projectId)), overallUsage: usageHistory(past) };
+  }, [data.sessions, projectId, sessionId]);
   const [enabled, setEnabled] = useState(false), [status, setStatus] = useState('');
   const [room] = useState(roomId);
   const heat = useRef(new ImageHeatmap()), live = useRef(playing), recordingRef = useRef(recording), contextRef = useRef({ loop, saveRevision }), calibrated = useRef(false);
@@ -35,7 +60,7 @@ export default function ProjectionCard({ store, server, playing, recording, corn
       if (socket.readyState !== WebSocket.OPEN) return;
       const view = store.getView(), active = recordingRef.current && live.current && view.status?.state === 'tracking' && !!view.usage['8count']?.tracking_ok && !!view.pose && Date.now() - view.pose.t < 500;
       const music = store.getMusicSnapshot();
-      socket.send(JSON.stringify({ active, missionTitle, context: { position: music?.position ?? null, playing: music?.playing === true, loop: contextRef.current.loop, saveRevision: contextRef.current.saveRevision }, recording: recordingRef.current, calibrated: calibrated.current, cells: heat.current.update(view.pose, active, Date.now()), ...(active ? { body: bodySummary(view.usage.recent, view.pose) } : {}) }));
+      socket.send(JSON.stringify({ active, missionTitle, context: { position: music?.position ?? null, playing: music?.playing === true, loop: contextRef.current.loop, saveRevision: contextRef.current.saveRevision, ...historyRef.current }, recording: recordingRef.current, calibrated: calibrated.current, cells: heat.current.update(view.pose, active, Date.now()), ...(active ? { body: bodySummary(view.usage.recent, view.pose) } : {}) }));
     }, 250);
     return () => { clearInterval(timer); socketRef.current = null; agentCallback.current(null); if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ active: false, cells: Array(64).fill(0) })); socket.close(); };
   }, [enabled, base, room, store, missionTitle]);

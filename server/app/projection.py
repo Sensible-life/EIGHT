@@ -80,6 +80,12 @@ def _body(value):
     return {'upper': upper, 'lower': lower, 'underused': list(dict.fromkeys(targets))}
 
 
+def _usage_history(value):
+    if not isinstance(value, dict) or not value or any(k not in TARGETS or not _number(v) for k, v in value.items()):
+        return None
+    return dict(value)
+
+
 @router.get('/projection/{room}', response_class=HTMLResponse)
 def display(room: str):
     if not ROOM.fullmatch(room):
@@ -194,7 +200,9 @@ async def relay(ws: WebSocket, room: str, role: str):
                 agent = guide.observe(Observation(active=active and body is not None,
                                                    upper=body['upper'] if body else None,
                                                    lower=body['lower'] if body else None,
-                                                   underused=tuple(body['underused']) if body else (), position=pos, loop_start=loop['start'] if loop else None, loop_end=loop['end'] if loop else None, save_revision=rev, playing=context.get('playing') if type(context.get('playing')) is bool else None), now)
+                                                   underused=tuple(body['underused']) if body else (), position=pos, loop_start=loop['start'] if loop else None, loop_end=loop['end'] if loop else None, save_revision=rev, playing=context.get('playing') if type(context.get('playing')) is bool else None,
+                                                   project_usage=_usage_history(context.get('projectUsage')),
+                                                   overall_usage=_usage_history(context.get('overallUsage'))), now)
                 if body is not None:
                     packet['agent'] = agent
                 previous_agent = json.loads(state['last']).get('agent') if state['last'] else None
