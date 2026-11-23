@@ -20,6 +20,16 @@ Open `http://localhost:8000/display/demo` on the server computer. The page is ex
 
 An updated phone app JS bundle is needed to send body aggregates. Older phone bundles still send the floor heatmap, but the 8 remains neutral and the guide does not offer body-based ideas. The phone camera must remain visible, recording, tracking active, and arms and legs visible. The body values summarize the recent 30-second window: the upper ring represents relative arm activity and the lower ring represents relative leg activity, normalized against one another. They are estimates, not scores, quality assessments, or measurements of strength. A missing/occluded body part is not counted as unused. Tracking loss, music pause, stopping the recording and a stale connection suppress proposals. No camera images or pose coordinates are transmitted.
 
+## Movement camera (computer webcam)
+
+Open `http://localhost:8000/movement` on the computer with the webcam. The page runs MediaPipe Pose in the browser and `server/app/movement.js` turns the landmarks of the last 4 seconds into words, shown on the page and published to its own room (the page links to its `/display/<room>`):
+
+- **Each part** (left/right arm, left/right leg, torso): a kind (`hold`, `reach`, `circle`, `swing`, `shake`; torso `hold`, `shift` = hips move over still feet, `travel`, `jump`, `drop`), plus speed, size, texture (`smooth`/`sharp`), where it points and timing against an optional BPM.
+- **Space**, against the spot where the dancer stood still for 1.5 s: zone (left/center/right, the dancer's own sides), level, depth (from the body's size in the frame), which foot the hips are over, the offset in torso lengths and the width used so far.
+- **Whole body**: one summary line (speed, size, direction, texture, lead part, timing).
+
+Video and landmarks stay in the page; the relay passes only known words and bounded numbers (`movement`, `parts`, `space` in `projection.py`). Positions are 2D, so a reach towards the camera or a spin on the spot is not seen. The thresholds (`MOVEMENT_DEFAULTS`) are first values tuned on scripted figures (`node server/tests/movement.test.mjs`) and still need tuning on real dancers. The page does not know the phone's music position, so its room is separate from a phone session's room.
+
 ## Workflow
 
 `display_agent.py` contains a separate in-memory `MovementGuide` per publishing session:
