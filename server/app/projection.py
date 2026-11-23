@@ -15,6 +15,7 @@ router = APIRouter()
 rooms: dict[str, dict] = {}
 ROOM = re.compile(r'^[a-f0-9]{16}$')
 DEMO_ROOM = 'd8d8d8d8d8d8d8d8'
+LIMBS = ('arm_l', 'arm_r', 'leg_l', 'leg_r')
 
 
 def _number(value):
@@ -39,7 +40,7 @@ def _movement(value):
 
 
 PART = {  # None in kind / speed / size: the part was not seen enough to say (labels.ts), never "still"
-    'kind': ('hold', 'reach', 'circle', 'swing', 'shake', 'shift', 'travel', 'jump', 'drop', None), 'speed': (*MOVEMENT['speed'], None), 'size': (*MOVEMENT['size'], None),
+    'kind': ('hold', 'reach', 'circle', 'swing', 'shake', 'step', 'shift', 'travel', 'jump', 'drop', None), 'speed': (*MOVEMENT['speed'], None), 'size': (*MOVEMENT['size'], None),
     'texture': MOVEMENT['texture'], 'toward': ('up', 'side', 'down', None), 'timing': MOVEMENT['timing'],
 }
 PART_NAMES = ('arm_l', 'arm_r', 'leg_l', 'leg_r', 'torso')
@@ -77,7 +78,14 @@ def _body(value):
         return None
     if len(targets) > len(TARGETS) or any(not isinstance(x, str) or x not in TARGETS for x in targets):
         return None
-    return {'upper': upper, 'lower': lower, 'underused': list(dict.fromkeys(targets))}
+    body = {'upper': upper, 'lower': lower, 'underused': list(dict.fromkeys(targets))}
+    # each limb's share of the movement, for the display's 8 (targets.ts limbShares): the recent window and the last
+    # 8-count; optional, and dropped alone when malformed
+    for key in ('limbs', 'limbsNow'):
+        limbs = value.get(key)
+        if isinstance(limbs, dict) and set(limbs) == set(LIMBS) and all(_number(limbs[k]) for k in LIMBS) and abs(sum(limbs.values()) - 1) <= 0.02:
+            body[key] = {k: limbs[k] for k in LIMBS}
+    return body
 
 
 def _usage_history(value):
@@ -98,6 +106,12 @@ def display(room: str):
     if not ROOM.fullmatch(room):
         return HTMLResponse('Invalid room', status_code=404)
     return HTMLResponse((Path(__file__).parent / 'projection.html').read_text(encoding='utf-8'))
+
+
+@router.get('/display/moves', response_class=HTMLResponse)
+def moves_page():
+    """What each movement word means: scripted figures, read by the same labeler as the dancer (app/src/tracking/figures.ts)."""
+    return HTMLResponse((Path(__file__).parent / 'moves.html').read_text(encoding='utf-8'))
 
 
 @router.get('/display/{room}', response_class=HTMLResponse)
@@ -122,7 +136,7 @@ def movement_camera(room: str | None = None):
 @router.get('/movement/rooms')
 def movement_rooms():
     """Phone sessions a webcam page can join: rooms with a publisher and no camera yet."""
-    return {'rooms': [room for room, s in rooms.items() if s['publisher'] is not None and s['camera'] is None and room != DEMO_ROOM]}
+    return {'rooms': [room for room, s in rooms.items() if s['publisher'] is not None and s['camera'] is None and not s.get('demo')]}
 
 
 @router.get('/static/tracking.js')
@@ -147,7 +161,10 @@ async def relay(ws: WebSocket, room: str, role: str):
         return
     if role == 'publish':
         state['publisher'] = ws
-        state['guide'] = MovementGuide(warmup=5, persistence=2, cooldown=20, no_save_after=7) if room == DEMO_ROOM else MovementGuide()
+        # A demo page (?demo=1: its scripted dancer, read like a webcam) asks sooner, so its whole loop shows within a minute.
+        state['demo'] = ws.query_params.get('demo') == '1' or room == DEMO_ROOM
+        state['guide'] = MovementGuide(warmup=5, persistence=2, cooldown=20, no_save_after=7, webcam_warmup=8, webcam_persistence=4,
+                                       webcam_cooldown=20, webcam_target_cooldown=40) if state['demo'] else MovementGuide()
     elif role == 'camera':  # a webcam display page (/display?room=) reading the dancer for the phone's session
         state['camera'] = ws
     else:

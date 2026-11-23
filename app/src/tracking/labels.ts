@@ -1,7 +1,8 @@
 // Live movement words for the display: what each body part did in the last few seconds and where the dancer is
 // in the space. Moved from server/app/movement.js (the webcam page) so the phone and the webcam read the same way.
 //   parts   arm_l, arm_r, leg_l, leg_r, torso: each { kind, speed, size, texture, toward, timing }
-//             limb kinds   hold · reach (straight out / back in) · circle · swing · shake
+//             limb kinds   hold · reach (straight out / back in) · circle (around the shoulder or the elbow; hip or
+//                          knee) · swing · shake; legs also step (a foot leaves its spot and lands while the other holds)
 //             torso kinds  hold · shift (hips move, feet stay) · travel (feet move too) · jump · drop
 //           A part seen in too little of the window is unknown (every field null), never "still" (principle 4).
 //   space   where the hips are against the home spot (standing still for calibrate_s): zone, level, depth, weight
@@ -18,7 +19,7 @@ export type Size = 'small' | 'medium' | 'large';
 export type Texture = 'smooth' | 'sharp' | null;
 export type Timing = 'on beat' | 'off beat' | 'mixed' | null;
 export type PartName = 'arm_l' | 'arm_r' | 'leg_l' | 'leg_r' | 'torso';
-export type PartKind = 'hold' | 'reach' | 'circle' | 'swing' | 'shake' | 'shift' | 'travel' | 'jump' | 'drop';
+export type PartKind = 'hold' | 'reach' | 'circle' | 'swing' | 'shake' | 'step' | 'shift' | 'travel' | 'jump' | 'drop';
 export type PartLabel = { kind: PartKind | null; speed: Speed | null; size: Size | null; texture: Texture; toward: 'up' | 'side' | 'down' | null; timing: Timing };
 export type SpaceLabel = { zone: Zone; level: 'low' | 'mid' | 'high'; depth: 'near' | 'home' | 'far'; weight: Zone; x: number; y: number; width: number };
 export type Direction = 'in place' | 'left' | 'right' | 'up' | 'down' | 'side to side' | 'up-down';
@@ -48,6 +49,16 @@ const box = (pts: P2[]) => { // extent of a path
   if (!pts.length) return { w: 0, h: 0, d: 0 };
   const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys);
   return { w, h, d: Math.hypot(w, h) };
+};
+/** How far a vector turned around its origin along a path (radians, signed), and the lowest and highest it got. */
+const winding = (path: P2[]) => {
+  let turn = 0, lo = 0, hi = 0;
+  for (let i = 1; i < path.length; i++) {
+    let da = Math.atan2(path[i][1], path[i][0]) - Math.atan2(path[i - 1][1], path[i - 1][0]);
+    da -= 2 * Math.PI * Math.round(da / (2 * Math.PI));
+    turn += da; lo = Math.min(lo, turn); hi = Math.max(hi, turn);
+  }
+  return { turn, lo, hi };
 };
 
 type Sample = { t: number; music: number | null; beat: number | null; T: number; hip: P2; feet: P2 | null; rel: Map<number, P2> };
@@ -142,6 +153,37 @@ export class MovementLabeler {
     return { speed, size, texture: Math.max(...vals) / m >= c.sharp ? 'sharp' : 'smooth', timing, mean: m };
   }
 
+  /**
+   * Steps of one foot, read where it is in the room (torso lengths): it lifts or slides off its spot and lands again
+   * while the other foot holds the weight, so a jump or the whole body sliding over is no step. `lift` is the highest
+   * it rose above the floor, so a kick or a knee lift can be told apart from a step.
+   */
+  private steps(foot: number, other: number, scale: number): { count: number; lift: number; speeds: (number | null)[]; extent: number } {
+    const c = this.cfg.step, s = this.samples;
+    const at = (q: Sample, j: number): P2 | null => { const r = q.rel.get(j); return r ? [(q.hip[0] + r[0] * q.T) / scale, (q.hip[1] + r[1] * q.T) / scale] : null; };
+    const F = s.map(q => at(q, foot)), O = s.map(q => at(q, other));
+    const ys = [...F, ...O].filter((p): p is P2 => p !== null).map(p => p[1]);
+    const floor = ys.length ? Math.max(...ys) : 0; // image y grows down: the floor is the lowest a foot got
+    const speed = (P: (P2 | null)[], i: number) => { const a = P[i - 1], b = P[i]; return i > 0 && a && b ? len(sub(b, a)) / (s[i].t - s[i - 1].t) : null; };
+    const planted = (P: (P2 | null)[], i: number) => { const v = speed(P, i), p = P[i]; return !!p && v !== null && v < c.plant_speed && floor - p[1] <= c.lift / 2; };
+    let count = 0, lift = 0, spot: P2 | null = null, away: { top: number; otherDown: number; n: number } | null = null;
+    for (let i = 1; i < s.length; i++) {
+      const p = F[i];
+      if (p) lift = Math.max(lift, floor - p[1]);
+      if (planted(F, i) && p) {
+        // landed: a step if the foot rose or ended up somewhere else, and the other foot stood the whole time
+        if (away && spot && (away.top >= c.lift || Math.abs(p[0] - spot[0]) >= c.move) && away.otherDown >= 0.8 * away.n) count++;
+        away = null; spot = p;
+      } else if (spot) {
+        away ??= { top: 0, otherDown: 0, n: 0 };
+        away.n++;
+        if (p) away.top = Math.max(away.top, floor - p[1]);
+        if (planted(O, i)) away.otherDown++;
+      }
+    }
+    return { count, lift, speeds: s.slice(1).map((_, i) => speed(F, i + 1)), extent: box(F.filter((x): x is P2 => x !== null)).d };
+  }
+
   /** Everything about the current window; null until it holds about a second of frames. */
   label(): MovementLabel | null {
     const s = this.samples, c = this.cfg;
@@ -166,16 +208,21 @@ export class MovementLabeler {
       if (path.length) {
         const full = Math.max(...s.map(q => { const r = q.rel.get(L.root), m = q.rel.get(L.mid), e = q.rel.get(L.end); return r && m && e ? len(sub(m, r)) + len(sub(e, m)) : 0; })) || 1;
         const ext = path.map(p0 => len(p0) / full); // 0 folded .. 1 straight
-        let turn = 0, lo = 0, hi = 0;
-        for (let i = 1; i < path.length; i++) {
-          let da = Math.atan2(path[i][1], path[i][0]) - Math.atan2(path[i - 1][1], path[i - 1][0]);
-          da -= 2 * Math.PI * Math.round(da / (2 * Math.PI));
-          turn += da; lo = Math.min(lo, turn); hi = Math.max(hi, turn);
-        }
+        const { turn, lo, hi } = winding(path);
+        // the hand going around the elbow (the foot around the knee) is a circle too, even when the upper arm stays
+        const lower = winding(s.map(q => { const e = q.rel.get(L.end), m = q.rel.get(L.mid); return e && m ? sub(e, m) : null; }).filter((x): x is P2 => x !== null));
         const far = path[ext.indexOf(Math.max(...ext))];
         p.toward = far[1] < -0.5 * len(far) ? 'up' : far[1] > 0.5 * len(far) ? 'down' : 'side';
-        p.kind = d.speed === 'still' ? 'hold' : Math.abs(turn) >= c.limb.circle_rad ? 'circle'
-          : Math.max(...ext) - Math.min(...ext) >= c.limb.reach ? 'reach' : hi - lo >= c.limb.swing_rad ? 'swing' : 'shake';
+        const step = L.name === 'leg_l' || L.name === 'leg_r' ? this.steps(L.end, L.name === 'leg_l' ? 28 : 27, scale) : null;
+        if (step && step.count >= c.step.min_steps && step.lift <= c.step.max_lift) {
+          // steps are read where the foot is in the room: against the hip a walking foot hardly moves
+          const sd = this.describe(step.speeds, step.extent);
+          p.kind = 'step'; p.speed = sd.speed === 'still' ? 'slow' : sd.speed; p.size = sd.size; p.texture = sd.texture; p.timing = sd.timing;
+          means[L.name] = Math.max(d.mean, sd.mean);
+        } else {
+          p.kind = d.speed === 'still' ? 'hold' : Math.max(Math.abs(turn), Math.abs(lower.turn)) >= c.limb.circle_rad ? 'circle'
+            : Math.max(...ext) - Math.min(...ext) >= c.limb.reach ? 'reach' : hi - lo >= c.limb.swing_rad ? 'swing' : 'shake';
+        }
       }
       parts[L.name] = p;
     }

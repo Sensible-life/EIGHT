@@ -100,6 +100,7 @@ var DEFAULT_CONFIG = {
     lead_share: 0.34,
     beat_near: 0.2,
     limb: { circle_rad: 1.5 * Math.PI, reach: 0.3, swing_rad: 0.5 },
+    step: { plant_speed: 0.6, lift: 0.1, move: 0.15, max_lift: 0.5, min_steps: 2 },
     torso: { shift: 0.2, jump: 0.2, feet_up: 0.1, drop: 0.75 },
     calibrate_s: 1.5,
     space: { zone: 0.8, near: 1.2, far: 0.83, weight: 0.25 },
@@ -185,6 +186,17 @@ var box = (pts) => {
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys);
   return { w, h, d: Math.hypot(w, h) };
 };
+var winding = (path) => {
+  let turn = 0, lo = 0, hi = 0;
+  for (let i = 1; i < path.length; i++) {
+    let da = Math.atan2(path[i][1], path[i][0]) - Math.atan2(path[i - 1][1], path[i - 1][0]);
+    da -= 2 * Math.PI * Math.round(da / (2 * Math.PI));
+    turn += da;
+    lo = Math.min(lo, turn);
+    hi = Math.max(hi, turn);
+  }
+  return { turn, lo, hi };
+};
 var MovementLabeler = class {
   constructor(cfg = DEFAULT_CONFIG.labels) {
     this.cfg = cfg;
@@ -217,11 +229,11 @@ var MovementLabeler = class {
       this.zones = [];
     }
     const prev = this.samples[this.samples.length - 1], a = prev ? c.smooth : 1;
-    const ease = (now, was) => was ? [was[0] + a * (now[0] - was[0]), was[1] + a * (now[1] - was[1])] : now;
+    const ease2 = (now, was) => was ? [was[0] + a * (now[0] - was[0]), was[1] + a * (now[1] - was[1])] : now;
     const rel = /* @__PURE__ */ new Map();
-    for (const j of JOINTS) if (seen(j)) rel.set(j, ease([(at(j)[0] - hipRaw[0]) / T, (at(j)[1] - hipRaw[1]) / T], prev?.rel.get(j)));
-    const feet = seen(27) && seen(28) ? ease(mid2(at(27), at(28)), prev?.feet) : null;
-    this.samples.push({ t, music: f.musicT ?? null, beat: f.beatS ?? null, T: prev ? prev.T + a * (T - prev.T) : T, hip: ease(hipRaw, prev?.hip), feet, rel });
+    for (const j of JOINTS) if (seen(j)) rel.set(j, ease2([(at(j)[0] - hipRaw[0]) / T, (at(j)[1] - hipRaw[1]) / T], prev?.rel.get(j)));
+    const feet = seen(27) && seen(28) ? ease2(mid2(at(27), at(28)), prev?.feet) : null;
+    this.samples.push({ t, music: f.musicT ?? null, beat: f.beatS ?? null, T: prev ? prev.T + a * (T - prev.T) : T, hip: ease2(hipRaw, prev?.hip), feet, rel });
     while (t - this.samples[0].t > c.window_s) this.samples.shift();
     if (!this.home) this.calibrate();
     if (!this.home) return;
@@ -270,6 +282,45 @@ var MovementLabeler = class {
     const timing = peaks < 3 ? null : on / peaks >= 0.6 ? "on beat" : on / peaks <= 0.3 ? "off beat" : "mixed";
     return { speed, size, texture: Math.max(...vals) / m >= c.sharp ? "sharp" : "smooth", timing, mean: m };
   }
+  /**
+   * Steps of one foot, read where it is in the room (torso lengths): it lifts or slides off its spot and lands again
+   * while the other foot holds the weight, so a jump or the whole body sliding over is no step. `lift` is the highest
+   * it rose above the floor, so a kick or a knee lift can be told apart from a step.
+   */
+  steps(foot, other, scale) {
+    const c = this.cfg.step, s = this.samples;
+    const at = (q, j) => {
+      const r = q.rel.get(j);
+      return r ? [(q.hip[0] + r[0] * q.T) / scale, (q.hip[1] + r[1] * q.T) / scale] : null;
+    };
+    const F = s.map((q) => at(q, foot)), O = s.map((q) => at(q, other));
+    const ys = [...F, ...O].filter((p) => p !== null).map((p) => p[1]);
+    const floor = ys.length ? Math.max(...ys) : 0;
+    const speed = (P, i) => {
+      const a = P[i - 1], b = P[i];
+      return i > 0 && a && b ? len(sub(b, a)) / (s[i].t - s[i - 1].t) : null;
+    };
+    const planted = (P, i) => {
+      const v = speed(P, i), p = P[i];
+      return !!p && v !== null && v < c.plant_speed && floor - p[1] <= c.lift / 2;
+    };
+    let count = 0, lift = 0, spot = null, away = null;
+    for (let i = 1; i < s.length; i++) {
+      const p = F[i];
+      if (p) lift = Math.max(lift, floor - p[1]);
+      if (planted(F, i) && p) {
+        if (away && spot && (away.top >= c.lift || Math.abs(p[0] - spot[0]) >= c.move) && away.otherDown >= 0.8 * away.n) count++;
+        away = null;
+        spot = p;
+      } else if (spot) {
+        away ?? (away = { top: 0, otherDown: 0, n: 0 });
+        away.n++;
+        if (p) away.top = Math.max(away.top, floor - p[1]);
+        if (planted(O, i)) away.otherDown++;
+      }
+    }
+    return { count, lift, speeds: s.slice(1).map((_, i) => speed(F, i + 1)), extent: box(F.filter((x) => x !== null)).d };
+  }
   /** Everything about the current window; null until it holds about a second of frames. */
   label() {
     const s = this.samples, c = this.cfg;
@@ -305,17 +356,25 @@ var MovementLabeler = class {
           return r && m && e ? len(sub(m, r)) + len(sub(e, m)) : 0;
         })) || 1;
         const ext = path.map((p0) => len(p0) / full);
-        let turn = 0, lo = 0, hi = 0;
-        for (let i = 1; i < path.length; i++) {
-          let da = Math.atan2(path[i][1], path[i][0]) - Math.atan2(path[i - 1][1], path[i - 1][0]);
-          da -= 2 * Math.PI * Math.round(da / (2 * Math.PI));
-          turn += da;
-          lo = Math.min(lo, turn);
-          hi = Math.max(hi, turn);
-        }
+        const { turn, lo, hi } = winding(path);
+        const lower = winding(s.map((q) => {
+          const e = q.rel.get(L.end), m = q.rel.get(L.mid);
+          return e && m ? sub(e, m) : null;
+        }).filter((x) => x !== null));
         const far = path[ext.indexOf(Math.max(...ext))];
         p.toward = far[1] < -0.5 * len(far) ? "up" : far[1] > 0.5 * len(far) ? "down" : "side";
-        p.kind = d.speed === "still" ? "hold" : Math.abs(turn) >= c.limb.circle_rad ? "circle" : Math.max(...ext) - Math.min(...ext) >= c.limb.reach ? "reach" : hi - lo >= c.limb.swing_rad ? "swing" : "shake";
+        const step = L.name === "leg_l" || L.name === "leg_r" ? this.steps(L.end, L.name === "leg_l" ? 28 : 27, scale) : null;
+        if (step && step.count >= c.step.min_steps && step.lift <= c.step.max_lift) {
+          const sd = this.describe(step.speeds, step.extent);
+          p.kind = "step";
+          p.speed = sd.speed === "still" ? "slow" : sd.speed;
+          p.size = sd.size;
+          p.texture = sd.texture;
+          p.timing = sd.timing;
+          means[L.name] = Math.max(d.mean, sd.mean);
+        } else {
+          p.kind = d.speed === "still" ? "hold" : Math.max(Math.abs(turn), Math.abs(lower.turn)) >= c.limb.circle_rad ? "circle" : Math.max(...ext) - Math.min(...ext) >= c.limb.reach ? "reach" : hi - lo >= c.limb.swing_rad ? "swing" : "shake";
+        }
       }
       parts[L.name] = p;
     }
@@ -1177,8 +1236,8 @@ var BodyTracker = class {
     if (prev) {
       const dt = (tMs - prev.tMs) / 1e3;
       if (dt > 0 && dt <= this.cfg.features.max_dt_s) {
-        const both = visible.map((v, i) => v && prev.visible[i]);
-        ({ scores, observed } = segmentActivity(prev.norm, norm2, prev.angles, angles, dt, both, this.cfg.features.weights, this.calibration?.noiseFloor ?? null));
+        const both2 = visible.map((v, i) => v && prev.visible[i]);
+        ({ scores, observed } = segmentActivity(prev.norm, norm2, prev.angles, angles, dt, both2, this.cfg.features.weights, this.calibration?.noiseFloor ?? null));
       }
     }
     this.prev = { tMs, norm: norm2, angles, visible };
@@ -1542,6 +1601,12 @@ var LEVELS2 = ["low", "high"];
 var SIDES2 = ["left", "right"];
 var r3 = (x) => Math.round(1e3 * x) / 1e3;
 var ordered = (set) => TARGET_ORDER.filter((t) => set.has(t));
+function limbShares(usage) {
+  if (!usage?.tracking_ok) return null;
+  const s = usage.segments, total = s.arm_l + s.arm_r + s.leg_l + s.leg_r;
+  if (!(total > 0)) return null;
+  return { arm_l: r3(s.arm_l / total), arm_r: r3(s.arm_r / total), leg_l: r3(s.leg_l / total), leg_r: r3(s.leg_r / total) };
+}
 function ringShares(usage) {
   if (!usage?.tracking_ok) return null;
   const s = usage.segments, upper = s.arm_l + s.arm_r, total = upper + s.leg_l + s.leg_r;
@@ -1614,6 +1679,211 @@ function webPoseEvent(f) {
   };
 }
 
+// src/tracking/figures.ts
+var FIGURE_ASPECT = 0.75;
+var BEAT_S = 0.5;
+var STILL_S = 3;
+function standing() {
+  const P = Array.from({ length: 33 }, () => [0.5, 0.5]);
+  const set = (i, x, y) => {
+    P[i] = [x, y];
+  };
+  set(0, 0.5, 0.2);
+  set(1, 0.51, 0.19);
+  set(2, 0.515, 0.19);
+  set(3, 0.52, 0.19);
+  set(4, 0.49, 0.19);
+  set(5, 0.485, 0.19);
+  set(6, 0.48, 0.19);
+  set(7, 0.53, 0.2);
+  set(8, 0.47, 0.2);
+  set(9, 0.51, 0.22);
+  set(10, 0.49, 0.22);
+  set(11, 0.56, 0.3);
+  set(12, 0.44, 0.3);
+  set(13, 0.58, 0.4);
+  set(14, 0.42, 0.4);
+  set(15, 0.59, 0.5);
+  set(16, 0.41, 0.5);
+  set(23, 0.53, 0.5);
+  set(24, 0.47, 0.5);
+  set(25, 0.53, 0.65);
+  set(26, 0.47, 0.65);
+  set(27, 0.53, 0.8);
+  set(28, 0.47, 0.8);
+  return P;
+}
+function attach(P) {
+  for (const [elbow, wrist, fingers] of [[13, 15, [17, 19, 21]], [14, 16, [18, 20, 22]]]) {
+    const d = [P[wrist][0] - P[elbow][0], P[wrist][1] - P[elbow][1]];
+    fingers.forEach((f, k) => {
+      P[f] = [P[wrist][0] + d[0] * (0.25 + 0.05 * k), P[wrist][1] + d[1] * (0.25 + 0.05 * k)];
+    });
+  }
+  for (const [ankle, heel, toe, out] of [[27, 29, 31, 1], [28, 30, 32, -1]]) {
+    P[heel] = [P[ankle][0], P[ankle][1] + 0.012];
+    P[toe] = [P[ankle][0] + 0.02 * out, P[ankle][1] + 0.022];
+  }
+  return P;
+}
+var moveAll = (P, dx, dy, only = () => true) => P.forEach((p, i) => {
+  if (only(i)) {
+    p[0] += dx;
+    p[1] += dy;
+  }
+});
+var UPPER = (i) => i < 25;
+var beat = (t) => t / BEAT_S % 1;
+var punch = (k) => k < 0.15 ? k / 0.15 : k < 0.4 ? 1 : 1 - (k - 0.4) / 0.6;
+var reachRight = (t, P) => {
+  const out = punch(beat(t));
+  P[16] = [0.42 - 0.22 * out, 0.33];
+  P[14] = [0.43 - 0.1 * out, 0.36 - 0.03 * out];
+};
+var circleLeft = (t, P) => {
+  const a = Math.PI * t;
+  P[15] = [0.56 + 0.2 * Math.cos(a), 0.3 + 0.2 * Math.sin(a)];
+  P[13] = [0.56 + 0.1 * Math.cos(a), 0.3 + 0.1 * Math.sin(a)];
+};
+var circleRight = (t, P) => {
+  const a = Math.PI - Math.PI * t;
+  P[16] = [0.44 + 0.2 * Math.cos(a), 0.3 + 0.2 * Math.sin(a)];
+  P[14] = [0.44 + 0.1 * Math.cos(a), 0.3 + 0.1 * Math.sin(a)];
+};
+var swingLeft = (t, P) => {
+  const a = Math.PI / 2 + 0.6 * Math.sin(Math.PI * t);
+  P[15] = [0.56 + 0.2 * Math.cos(a), 0.3 + 0.2 * Math.sin(a)];
+  P[13] = [0.56 + 0.1 * Math.cos(a), 0.3 + 0.1 * Math.sin(a)];
+};
+var forearmLeft = (t, P) => {
+  const a = Math.PI * t;
+  P[13] = [0.66, 0.3];
+  P[15] = [0.66 + 0.1 * Math.cos(a), 0.3 + 0.1 * Math.sin(a)];
+};
+var march = (t, P) => {
+  for (const [ankle, knee, phase] of [[27, 25, 0], [28, 26, Math.PI]]) {
+    const up = Math.max(0, Math.sin(Math.PI * t / BEAT_S + phase));
+    P[ankle][1] -= 0.04 * up;
+    P[knee][1] -= 0.02 * up;
+  }
+};
+var shakeRight = (t, P) => {
+  const a = 2 * Math.PI * 6 * t;
+  P[16] = [0.41 + 0.015 * Math.sin(a), 0.5 + 0.01 * Math.cos(a)];
+};
+var kneeLeft = (t, P) => {
+  const up = punch(beat(t));
+  P[25] = [0.56, 0.65 - 0.12 * up];
+  P[27] = [0.55, 0.8 - 0.14 * up];
+};
+var kick = (side) => (t, P) => {
+  const out = Math.abs(Math.sin(Math.PI * t / BEAT_S / 2)), [hip, knee, ankle] = side > 0 ? [23, 25, 27] : [24, 26, 28];
+  P[ankle] = [P[hip][0] + side * 0.2 * out, 0.8 - 0.12 * out];
+  P[knee] = [P[hip][0] + side * 0.1 * out, 0.65 - 0.03 * out];
+};
+var shift = (t, P) => moveAll(P, 0.08 * Math.sin(Math.PI * t / 2), 0, UPPER);
+var travel = (t, P) => moveAll(P, 0.12 * Math.sin(Math.PI * t / 2), 0);
+var jump = (t, P) => moveAll(P, 0, -0.12 * Math.abs(Math.sin(Math.PI * t / BEAT_S)));
+var crouch = (depth, P) => {
+  moveAll(P, 0, depth, UPPER);
+  P[25] = [P[25][0] + 0.4 * depth, P[25][1] + 0.5 * depth];
+  P[26] = [P[26][0] - 0.4 * depth, P[26][1] + 0.5 * depth];
+};
+var ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x)));
+var drop = (t, P) => crouch(0.12 * (t < 4 ? ease(t / 2) : 1 - ease((t - 4) / 2)), P);
+var reachLeft = (t, P) => {
+  const out = punch(beat(t));
+  P[15] = [0.58 + 0.22 * out, 0.33];
+  P[13] = [0.57 + 0.1 * out, 0.36 - 0.03 * out];
+};
+var toSide = (side) => (t, P) => {
+  const x = t < 2 ? t / 2 : t < 6 ? 1 : Math.max(0, 1 - (t - 6) / 2), [wrist, elbow] = side > 0 ? [16, 14] : [15, 13];
+  moveAll(P, side * 0.3 * x, 0);
+  (side > 0 ? reachRight : reachLeft)(t, P);
+  P[wrist][0] += side * 0.3 * x;
+  P[elbow][0] += side * 0.3 * x;
+};
+var overheadO = (_t, P) => {
+  P[15] = [0.51, 0.08];
+  P[16] = [0.49, 0.08];
+  P[13] = [0.62, 0.18];
+  P[14] = [0.38, 0.18];
+};
+var both = (...poses) => (t, P) => poses.forEach((p) => p(t, P));
+var ARM_L = [11, 13, 15, 17, 19, 21];
+var ARM_R = [12, 14, 16, 18, 20, 22];
+var LEG_L = [23, 25, 27, 29, 31];
+var LEG_R = [24, 26, 28, 30, 32];
+var TORSO = [11, 12, 23, 24];
+var MOVES = [
+  { id: "hold", part: "arm_l", kind: "hold", joints: ARM_L, trail: 15, loopS: 2, pose: () => {
+  } },
+  { id: "reach", part: "arm_r", kind: "reach", joints: ARM_R, trail: 16, loopS: 2, pose: reachRight },
+  { id: "circle", part: "arm_l", kind: "circle", joints: ARM_L, trail: 15, loopS: 2, pose: circleLeft },
+  { id: "forearm", part: "arm_l", kind: "circle", joints: ARM_L, trail: 15, loopS: 2, pose: forearmLeft },
+  { id: "swing", part: "arm_l", kind: "swing", joints: ARM_L, trail: 15, loopS: 2, pose: swingLeft },
+  { id: "shake", part: "arm_r", kind: "shake", joints: ARM_R, trail: 16, loopS: 2, pose: shakeRight },
+  { id: "march", part: "leg_l", kind: "step", joints: [...LEG_L, ...LEG_R], trail: 27, loopS: 1, pose: march },
+  { id: "knee", part: "leg_l", kind: "reach", joints: LEG_L, trail: 27, loopS: 2, pose: kneeLeft },
+  { id: "kick", part: "leg_r", kind: "swing", joints: LEG_R, trail: 28, loopS: 2, pose: kick(-1) },
+  { id: "shift", part: "torso", kind: "shift", joints: TORSO, trail: 23, loopS: 4, pose: shift },
+  { id: "travel", part: "torso", kind: "travel", joints: TORSO, trail: 23, loopS: 4, pose: travel },
+  { id: "jump", part: "torso", kind: "jump", joints: TORSO, trail: 23, loopS: 1, pose: jump },
+  { id: "drop", part: "torso", kind: "drop", joints: TORSO, trail: 23, loopS: 6, readS: 3, pose: drop },
+  { id: "left", part: "space", kind: "left", joints: TORSO, trail: 23, loopS: 8, readS: 5, pose: toSide(1) },
+  { id: "right", part: "space", kind: "right", joints: TORSO, trail: 24, loopS: 8, readS: 5, pose: toSide(-1) },
+  { id: "yes", part: "answer", kind: "yes", joints: [...ARM_L, ...ARM_R], trail: 15, loopS: 4, pose: overheadO }
+];
+var figure = (pose, t) => {
+  const P = standing();
+  pose?.(t, P);
+  return attach(P);
+};
+var moveFigure = (move, t) => figure(move.pose, (t % move.loopS + move.loopS) % move.loopS);
+function figureEvent(tMs, seq, P) {
+  const hip = [(P[23][0] + P[24][0]) / 2, (P[23][1] + P[24][1]) / 2];
+  return {
+    tMs,
+    seq,
+    ageMs: 0,
+    emitWallMs: tMs,
+    latencyMs: 0,
+    captureFrom: "analyzer",
+    aspect: FIGURE_ASPECT,
+    image: P.flatMap((p) => [p[0], p[1], 1]),
+    world: P.flatMap((p) => [(p[0] - hip[0]) * 2, (p[1] - hip[1]) * 2, 0])
+  };
+}
+function readMove(move, cfg = DEFAULT_CONFIG) {
+  const labeler = new MovementLabeler(cfg.labels), answer = new OverheadAnswer(cfg.answer), fps = 30;
+  let yesAfterS = null;
+  for (let i = 0; i < (STILL_S + (move.readS ?? 8)) * fps; i++) {
+    const t = i / fps, P = figure(t >= STILL_S ? move.pose : null, t - STILL_S);
+    labeler.add({ tMs: 1e3 * t, image: P, visibility: P.map(() => 1), aspect: FIGURE_ASPECT, musicT: t, beatS: BEAT_S });
+    const pose = poseFromEvent(figureEvent(1e3 * t, i, P));
+    if (answer.update(pose, FIGURE_ASPECT, true, 1e3 * t).yes && yesAfterS === null) yesAfterS = Math.round(10 * (t - STILL_S)) / 10;
+  }
+  const label2 = labeler.label();
+  return { label: label2, part: label2 && move.part !== "space" && move.part !== "answer" ? label2.parts[move.part] : null, space: label2?.space ?? null, yesAfterS };
+}
+var DEMO_TRY_S = 14;
+var TARGET_POSE = {
+  arm_l: both(circleLeft),
+  arm_r: both(circleRight),
+  leg_l: both(kick(1), swingLeft),
+  leg_r: both(kick(-1), swingLeft),
+  low: (t, P) => {
+    reachRight(t, P);
+    crouch(0.12 * (t < DEMO_TRY_S - 2 ? ease(t) : 1 - ease((t - DEMO_TRY_S + 2) / 2)), P);
+  },
+  // down, then up before the end
+  high: both(reachRight, jump),
+  left: toSide(1),
+  right: toSide(-1)
+};
+var DANCE = both(reachRight, circleLeft);
+var demoFigure = (cue, t) => figure(cue === "still" ? null : cue === "dance" ? DANCE : cue === "yes" ? overheadO : TARGET_POSE[cue], t);
+
 // src/tracking/display.ts
 function buildPacket(i, cfg) {
   const p = { active: i.active, calibrated: false, cells: i.cells, source: i.source };
@@ -1624,8 +1894,12 @@ function buildPacket(i, cfg) {
     p.parts = i.label.parts;
     if (i.label.space) p.space = i.label.space;
   }
-  const rings = ringShares(i.usage.recent);
-  if (rings) p.body = { ...rings, underused: lackingTargets(i.usage.recent, i.zones30, cfg) };
+  const rings = ringShares(i.usage.recent), limbs = limbShares(i.usage.recent);
+  if (rings && limbs) {
+    p.body = { ...rings, limbs, underused: lackingTargets(i.usage.recent, i.zones30, cfg) };
+    const now = limbShares(i.usage["8count"]);
+    if (now) p.body.limbsNow = now;
+  }
   p.explored = exploredTargets(i.usage["8count"], i.zones8, cfg);
   if (i.answering) p.answering = true;
   return p;
@@ -1679,10 +1953,18 @@ var DisplayTracker = class {
   }
 };
 export {
+  BEAT_S,
   DEFAULT_CONFIG,
+  DEMO_TRY_S,
   DisplayTracker,
+  FIGURE_ASPECT,
+  MOVES,
   SKELETON_EDGES,
   TARGET_ORDER,
   buildPacket,
+  demoFigure,
+  figureEvent,
+  moveFigure,
+  readMove,
   webPoseEvent
 };

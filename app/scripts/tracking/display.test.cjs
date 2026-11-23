@@ -45,6 +45,10 @@ function runDisplay(move, seconds, { hide = [], asking = false } = {}) {
   assert.ok(f.packet.body.upper > 0.6, JSON.stringify(f.packet.body));
   assert.ok(f.packet.body.underused.includes('leg_l') && f.packet.body.underused.includes('leg_r'), JSON.stringify(f.packet.body));
   assert.deepEqual(f.lacking, f.packet.body.underused);
+  const limbs = f.packet.body.limbs;
+  assert.ok(limbs.arm_l > limbs.leg_l && limbs.arm_r > limbs.leg_r, `the arms carry the 8's used color: ${JSON.stringify(limbs)}`);
+  const now = f.packet.body.limbsNow;
+  assert.ok(now && now.arm_l > now.leg_l, `the last 8-count too: ${JSON.stringify(now)}`);
   assert.ok(f.packet.parts && f.packet.movement && f.packet.space && f.packet.cells.length === 64);
   assert.equal(f.packet.explored.includes('leg_l'), false, 'still legs were not tried');
   assert.ok(f.pose && f.pose.lm.length === N, 'a pose to draw');

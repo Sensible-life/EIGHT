@@ -76,6 +76,47 @@ assert.equal(run(null, { hide: i => (i % 2 ? [15, 11] : []) }).speed, 'still', '
   assert.notEqual(m.lead, 'arm_l');
 }
 
+{
+  // the forearm circles around an elbow that stays (hanging, or out to the side): a circle, not a reach
+  for (const elbow of [[0.58, 0.4], [0.66, 0.3]]) {
+    const m = run((t, P) => { const a = Math.PI * t; P[13] = [...elbow]; P[15] = [elbow[0] + 0.1 * Math.cos(a), elbow[1] + 0.1 * Math.sin(a)]; });
+    assert.equal(m.parts.arm_l.kind, 'circle', `elbow at ${elbow}: ${JSON.stringify(m.parts.arm_l)}`);
+  }
+}
+
+// Steps: a foot leaves its spot and lands again while the other foot stands.
+const lifted = (t, phase) => Math.max(0, Math.sin(Math.PI * t / BEAT + phase));
+{
+  // marching in place: the feet take turns rising a little
+  const m = run((t, P) => { for (const [ankle, knee, phase] of [[27, 25, 0], [28, 26, Math.PI]]) { const up = lifted(t, phase); P[ankle][1] -= 0.04 * up; P[knee][1] -= 0.02 * up; } });
+  assert.deepEqual([m.parts.leg_l.kind, m.parts.leg_r.kind], ['step', 'step'], JSON.stringify(m.parts));
+  assert.equal(m.parts.leg_l.timing, 'on beat');
+  assert.equal(m.parts.torso.kind, 'hold', 'the hips stay');
+}
+{
+  // walking to the side: each foot in turn lifts and lands a little further, the hips follow
+  const m = run((t, P) => {
+    const n = t / BEAT, i = Math.floor(n), f = n - i, d = 0.05;
+    const left = i % 2 === 0 ? (i / 2 + f) * d : ((i + 1) / 2) * d, right = i % 2 === 1 ? ((i - 1) / 2 + f) * d : (i / 2) * d;
+    shift(P, (left + right) / 2, 0, UPPER);
+    for (const j of [25, 27]) P[j][0] += left;
+    for (const j of [26, 28]) P[j][0] += right;
+    P[i % 2 === 0 ? 27 : 28][1] -= 0.04 * Math.sin(Math.PI * f);
+  });
+  assert.deepEqual([m.parts.leg_l.kind, m.parts.leg_r.kind], ['step', 'step'], JSON.stringify(m.parts));
+  assert.equal(m.parts.torso.kind, 'travel');
+}
+{
+  // no step: both feet leave the floor together (a jump), or the whole body slides over with them
+  const jumpLegs = run((t, P) => shift(P, 0, -0.12 * Math.abs(Math.sin(Math.PI * t / BEAT)))).parts;
+  assert.notEqual(jumpLegs.leg_l.kind, 'step', JSON.stringify(jumpLegs.leg_l));
+  const slide = run((t, P) => shift(P, 0.12 * Math.sin(Math.PI * t / 2), 0)).parts;
+  assert.notEqual(slide.leg_l.kind, 'step', JSON.stringify(slide.leg_l));
+  // a kick rises too high for a step
+  const kick = run((t, P) => { const out = Math.abs(Math.sin(Math.PI * t / BEAT / 2)); P[28] = [0.47 - 0.2 * out, 0.8 - 0.12 * out]; P[26] = [0.47 - 0.1 * out, 0.65 - 0.03 * out]; }).parts;
+  assert.notEqual(kick.leg_r.kind, 'step', JSON.stringify(kick.leg_r));
+}
+
 // The torso: hips against the feet, and the whole body against the home spot.
 {
   // hips sway over feet that stay

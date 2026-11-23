@@ -65,6 +65,19 @@ class WebcamGuideTests(unittest.TestCase):
         self.run_until(1.5, under=('low',))
         self.assertEqual(self.run_until(15, under=('arm_l', 'low'))['proposal']['target'], 'low')
 
+    def test_soon_builds_up_to_the_question(self):
+        """The display brings the character in gradually: `soon` rises with the warm-up and the lack, 1 just before it asks."""
+        self.assertEqual(self.run_until(10, under=())['soon'], 0.0, 'nothing lacking: no question on its way')
+        self.g, self.t = MovementGuide(), 0.0
+        levels = [self.run_until(t)['soon'] for t in (3, 7.5, 12, 14.5)]
+        self.assertEqual(levels, sorted(levels), levels)
+        self.assertEqual(levels[0], 0.2, 'the warm-up is the slowest part early on (3 of 15 s)')
+        self.assertEqual(levels[-1], 0.97)
+        asking = self.run_until(15)
+        self.assertEqual((asking['state'], asking['soon']), ('asking', 0.0), 'once it asks, the bubble takes over')
+        self.g.respond(asking['proposal']['id'], 'dismiss', self.t)
+        self.assertLess(self.run_until(self.t + 5, under=('leg_l', 'low'))['soon'], 0.5, 'right after a question the cooldown holds it back')
+
     def test_ties_follow_limbs_before_heights(self):
         self.assertEqual(self.ask(under=('leg_l', 'low'))['target'], 'leg_l')
 
@@ -141,6 +154,39 @@ class WebcamRelayTests(unittest.TestCase):
             moved = client.get('/movement?room=../../x', follow_redirects=False)
             self.assertEqual(moved.headers['location'], '/display', 'only a room id is carried over')
             self.assertEqual(client.get('/movement.js').status_code, 404)
+            moves = client.get('/display/moves')
+            self.assertEqual(moves.status_code, 200, 'the moves page, not a room')
+            self.assertIn('/static/tracking.js', moves.text)
+            self.assertIn('readMove', bundle.text, 'the bundle carries the scripted figures')
+            self.assertEqual(client.get('/display/demo').status_code, 200)
+            self.assertEqual(client.get('/display/movez').status_code, 404)
+
+    def test_a_demo_room_asks_sooner_and_is_no_phone_session(self):
+        with TestClient(mini_app()) as client:
+            with client.websocket_connect(f'/projection/ws/{ROOM}/view') as viewer:
+                with client.websocket_connect(f'/projection/ws/{ROOM}/publish?demo=1') as publisher:
+                    publisher.send_json({'active': True, 'cells': CELLS, 'source': 'webcam', 'body': {'upper': .7, 'lower': .3, 'underused': ['low']}})
+                    self.assertEqual(viewer.receive_json()['agent']['timers']['warmup'], 8.0, 'demo rules: 8 s warm-up')
+                    self.assertEqual(client.get('/movement/rooms').json(), {'rooms': []}, 'a demo is not offered as a phone session')
+
+    def test_limb_shares_pass_when_they_add_up(self):
+        limbs = {'arm_l': .4, 'arm_r': .4, 'leg_l': .1, 'leg_r': .1}
+        with TestClient(mini_app()) as client:
+            with client.websocket_connect(f'/projection/ws/{ROOM}/view') as viewer:
+                with client.websocket_connect(f'/projection/ws/{ROOM}/publish') as publisher:
+                    now = {'arm_l': .1, 'arm_r': .1, 'leg_l': .4, 'leg_r': .4}
+                    publisher.send_json({'active': True, 'cells': CELLS, 'source': 'webcam', 'body': {'upper': .8, 'lower': .2, 'limbs': limbs, 'limbsNow': now, 'underused': ['leg_l']}})
+                    body = viewer.receive_json()['body']
+                    self.assertEqual((body['limbs'], body['limbsNow']), (limbs, now))
+                    publisher.send_json({'active': True, 'cells': CELLS, 'source': 'webcam', 'body': {'upper': .8, 'lower': .2, 'limbs': limbs, 'limbsNow': {**now, 'arm_l': 2}, 'underused': []}})
+                    body = viewer.receive_json()['body']
+                    self.assertEqual(body['limbs'], limbs)
+                    self.assertNotIn('limbsNow', body, 'a malformed 8-count share is dropped alone')
+                    for bad in ({**limbs, 'arm_l': .9}, {**limbs, 'tail': 0}, {**limbs, 'leg_r': 'x'}, [.25] * 4):
+                        publisher.send_json({'active': True, 'cells': CELLS, 'source': 'webcam', 'body': {'upper': .8, 'lower': .2, 'limbs': bad, 'underused': []}})
+                        body = viewer.receive_json()['body']
+                        self.assertNotIn('limbs', body, f'{bad!r} is dropped')
+                        self.assertEqual(body['upper'], .8, 'the rest of the body still passes')
 
     def test_webcam_packet_drives_the_guide(self):
         with TestClient(mini_app()) as client:

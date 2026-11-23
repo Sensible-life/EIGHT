@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Eight · Movement words</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--ink:#f7f4ff;--muted:#bcb5dc;--line:#ffffff1f;--used:#e9a6dc;--figure:#b9b2e6;--ok:#b9f0c4;--warn:#ffcf8a}
+*{box-sizing:border-box}html,body{margin:0}
+body{min-height:100vh;color:var(--ink);font-family:Manrope,Pretendard,system-ui,-apple-system,"Segoe UI",sans-serif;background:#1a1730 radial-gradient(circle at 50% 30%,#282244 0,#221d3d 20vmax,#1e1936 40vmax,#1a1730 70vmax) fixed}
+main{max-width:1280px;margin:0 auto;padding:28px 16px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+h1{margin:0;font-size:clamp(28px,4vw,44px);letter-spacing:-.03em}
+.intro{margin:8px 0 0;color:var(--muted);font-size:15px;line-height:1.55;max-width:760px}
+.tools{display:flex;gap:8px}
+.chip{font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:#ffffff0d;color:var(--ink);border-radius:999px;padding:8px 14px;text-decoration:none}
+.chip:focus-visible{outline:2px solid #cbb9ff;outline-offset:2px}
+h2{margin:36px 0 12px;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#cdb8f0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:18px;background:#ffffff08;padding:12px;display:flex;flex-direction:column;gap:8px}
+canvas{width:100%;aspect-ratio:3/4;border-radius:12px;background:#120f22;display:block}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.title{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.part{font-size:12px;font-weight:700;color:var(--used);white-space:nowrap}
+.about{margin:0;font-size:14px;line-height:1.5;color:#ddd7f6}
+.reads{margin-top:auto;padding-top:8px;border-top:1px solid var(--line);font-size:13px;line-height:1.45;color:var(--muted)}
+.reads b{color:var(--ink)}.reads .ok{color:var(--ok)}.reads .warn{color:var(--warn)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1 id="title">Movement words</h1><p id="intro" class="intro"></p></div>
+    <div class="tools"><button id="lang" class="chip" type="button">EN / KO</button><a id="back" class="chip" href="/display/demo">Demo</a></div>
+  </header>
+  <div id="sections"></div>
+</main>
+<script type="module">
+const $ = id => document.getElementById(id);
+const { MOVES, moveFigure, readMove, SKELETON_EDGES, FIGURE_ASPECT } = await import('/static/tracking.js');
+const TEXT = {
+  en: {
+    title: 'Movement words', back: 'Demo',
+    intro: 'What the display\'s words mean. Each figure is a scripted dancer; "reads as" is what the same code that watches the dancer actually makes of it. The view is a mirror, like the display: the dancer\'s left is on the left.',
+    sections: { limbs: 'Arms', legs: 'Legs', torso: 'Torso', space: 'Space and answer' },
+    parts: { arm_l: 'Left arm', arm_r: 'Right arm', leg_l: 'Left leg', leg_r: 'Right leg', torso: 'Torso', space: 'Space', answer: 'Answer' },
+    titles: { hold: 'Hold', reach: 'Reach', circle: 'Circle', forearm: 'Circle', swing: 'Swing', shake: 'Shake', march: 'Step', knee: 'Reach', kick: 'Swing', shift: 'Shift', travel: 'Travel', jump: 'Jump', drop: 'Drop', left: 'Left side', right: 'Right side', yes: 'Yes' },
+    about: {
+      hold: 'The part stays where it is.',
+      reach: 'The arm folds in, then shoots straight out and comes back: the distance from shoulder to hand changes a lot.',
+      circle: 'The whole arm turns around the shoulder, at least three quarters of a turn.',
+      forearm: 'Turning only the forearm around the elbow is a circle too, while the upper arm stays. A leg circling from the knee reads the same way.',
+      march: 'A foot leaves the floor (or slides off its spot) and lands again while the other foot holds the weight: marching, walking, side steps. Both feet leaving together is a jump, not a step.',
+      swing: 'The straight arm sways like a pendulum: its angle changes, its length does not.',
+      shake: 'Small, quick movement in place: not a turn, a sway or a reach.',
+      knee: 'Legs use the same words. Lifting the knee folds and unfolds the leg, so it reads as reach.',
+      kick: 'A straight leg kicked out to the side sways from the hip, so it reads as swing.',
+      shift: 'The hips sway over feet that stay.',
+      travel: 'Hips and feet move together: the whole body goes somewhere else.',
+      jump: 'Hips and feet rise above where they stood.',
+      drop: 'The hips come down towards the feet as the knees bend. The height reads as low.',
+      left: 'Moving more than a torso length to the dancer\'s left of the starting spot puts them on the left side of the space.',
+      right: 'The same to the dancer\'s right. The character can suggest either side when one is left out.',
+      yes: 'Both arms in an O over the head, held for 3 seconds, answers yes to the character.',
+    },
+    readsAs: 'Reads as', expected: 'expected', yesAfter: s => `yes after ${s} s`, noYes: 'no yes',
+    kinds: { hold: 'Hold', reach: 'Reach', circle: 'Circle', swing: 'Swing', shake: 'Shake', step: 'Step', shift: 'Shift', travel: 'Travel', jump: 'Jump', drop: 'Drop' },
+    words: { still: 'still', slow: 'slow', medium: 'medium speed', fast: 'fast', small: 'small', large: 'large', smooth: 'smooth', sharp: 'sharp', 'on beat': 'on beat', 'off beat': 'off beat', mixed: 'mixed timing',
+      left: 'left side', center: 'center', right: 'right side', low: 'low', mid: 'mid height', high: 'high' },
+    sizeMedium: 'mid-size',
+  },
+  ko: {
+    title: '움직임 단어', back: '데모',
+    intro: '디스플레이에 뜨는 단어가 어떤 움직임인지 보여 줘요. 각 그림은 대본대로 움직이는 가상의 댄서이고, "읽힌 결과"는 실제 댄서를 보는 코드가 이 움직임을 어떻게 읽었는지예요. 디스플레이처럼 거울로 보여서, 댄서의 왼쪽이 화면 왼쪽이에요.',
+    sections: { limbs: '팔', legs: '다리', torso: '몸통', space: '공간과 대답' },
+    parts: { arm_l: '왼팔', arm_r: '오른팔', leg_l: '왼다리', leg_r: '오른다리', torso: '몸통', space: '공간', answer: '대답' },
+    titles: { hold: '멈춤', reach: '뻗기', circle: '원 그리기', forearm: '원 그리기', swing: '스윙', shake: '흔들기', march: '스텝', knee: '뻗기', kick: '스윙', shift: '무게 이동', travel: '이동', jump: '점프', drop: '내려앉기', left: '왼쪽 공간', right: '오른쪽 공간', yes: '네' },
+    about: {
+      hold: '그 부위가 제자리에 머물러요.',
+      reach: '팔을 접었다가 쭉 뻗고 돌아와요. 어깨에서 손까지의 거리가 크게 바뀌어요.',
+      circle: '팔 전체가 어깨를 중심으로 ¾바퀴 이상 돌아요.',
+      forearm: '위팔은 그대로 두고 팔꿈치를 중심으로 아래팔만 돌려도 원 그리기예요. 다리를 무릎 중심으로 돌려도 같아요.',
+      march: '한 발로 버티는 동안 다른 발이 떨어졌다가(또는 미끄러져 자리를 옮겨) 다시 디뎌요. 제자리 걷기, 걷기, 옆걸음이 여기 들어요. 두 발이 같이 뜨면 스텝이 아니라 점프예요.',
+      swing: '편 팔이 시계추처럼 흔들려요. 각도는 바뀌고 길이는 그대로예요.',
+      shake: '제자리에서 작고 빠르게 움직여요. 돌기, 흔들기, 뻗기 어디에도 들지 않아요.',
+      knee: '다리도 같은 단어를 써요. 무릎을 들면 다리가 접혔다 펴져서 "뻗기"로 읽혀요.',
+      kick: '편 다리를 옆으로 차면 골반을 축으로 흔들려서 "스윙"으로 읽혀요.',
+      shift: '발은 그대로 두고 골반만 옮겨요.',
+      travel: '골반과 발이 함께 움직여요. 몸 전체가 자리를 옮겨요.',
+      jump: '골반과 발이 서 있던 높이보다 올라가요.',
+      drop: '무릎을 굽혀 골반이 발 쪽으로 내려가요. 높이는 "낮게"로 읽혀요.',
+      left: '처음 선 자리에서 댄서의 왼쪽으로 몸통 길이보다 멀리 가면 왼쪽 공간으로 읽혀요.',
+      right: '댄서의 오른쪽도 같아요. 한쪽을 안 쓰면 캐릭터가 그쪽을 제안할 수 있어요.',
+      yes: '두 팔로 머리 위에 O를 만들고 3초 유지하면 캐릭터에게 "네"라고 답해요.',
+    },
+    readsAs: '읽힌 결과', expected: '기대한 단어', yesAfter: s => `${s}초 뒤 "네"`, noYes: '"네" 없음',
+    kinds: { hold: '멈춤', reach: '뻗기', circle: '원 그리기', swing: '스윙', shake: '흔들기', step: '스텝', shift: '무게 이동', travel: '이동', jump: '점프', drop: '내려앉기' },
+    words: { still: '정지', slow: '느리게', medium: '보통 속도', fast: '빠르게', small: '작게', large: '크게', smooth: '부드럽게', sharp: '날카롭게', 'on beat': '정박', 'off beat': '엇박', mixed: '박자 섞임',
+      left: '왼쪽 공간', center: '가운데', right: '오른쪽 공간', low: '낮게', mid: '중간 높이', high: '높게' },
+    sizeMedium: '중간 크기',
+  },
+};
+let lang = 'en';
+try { if (localStorage.getItem('eight.lang') === 'ko') lang = 'ko'; } catch {}
+const SECTIONS = [['limbs', ['hold', 'reach', 'circle', 'forearm', 'swing', 'shake']], ['legs', ['march', 'knee', 'kick']], ['torso', ['shift', 'travel', 'jump', 'drop']], ['space', ['left', 'right', 'yes']]];
+const byId = Object.fromEntries(MOVES.map(m => [m.id, m]));
+const readings = Object.fromEntries(MOVES.map(m => [m.id, readMove(m)])); // the real labeler, once per move
+
+function readsAs(move) {
+  const w = TEXT[lang], r = readings[move.id], arrow = { up: '↑', side: '↔', down: '↓' };
+  if (move.part === 'answer') return { text: r.yesAfterS === null ? w.noYes : w.yesAfter(r.yesAfterS.toFixed(1)), ok: r.yesAfterS !== null };
+  if (move.part === 'space') { const s = r.space; return { text: s ? [w.words[s.zone], w.words[s.level]].join(' · ') : '—', ok: s?.zone === move.kind }; }
+  const p = r.part;
+  if (!p?.kind) return { text: '—', ok: false };
+  const details = p.kind === 'hold' ? [] : [w.words[p.speed], p.size === 'medium' ? w.sizeMedium : w.words[p.size], w.words[p.texture], w.words[p.timing]];
+  return { kind: `${w.kinds[p.kind] ?? p.kind}${p.kind !== 'hold' && p.kind !== 'step' && arrow[p.toward] ? ` ${arrow[p.toward]}` : ''}`, text: details.filter(Boolean).join(' · '), ok: p.kind === move.kind };
+}
+
+const cards = [];
+function build() {
+  const w = TEXT[lang], box = $('sections');
+  document.documentElement.lang = lang; document.title = `Eight · ${w.title}`;
+  $('title').textContent = w.title; $('intro').textContent = w.intro; $('back').textContent = w.back;
+  $('lang').textContent = lang === 'en' ? 'EN / KO' : 'KO / EN';
+  box.textContent = ''; cards.length = 0;
+  for (const [section, ids] of SECTIONS) {
+    const h = document.createElement('h2'); h.textContent = w.sections[section];
+    const grid = document.createElement('div'); grid.className = 'grid';
+    for (const id of ids) {
+      const move = byId[id]; if (!move) continue;
+      const card = document.createElement('article'); card.className = 'card';
+      const canvas = document.createElement('canvas');
+      canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', `${w.titles[id]}: ${w.about[id]}`);
+      const top = document.createElement('div'); top.className = 'top';
+      const title = document.createElement('div'); title.className = 'title'; title.textContent = w.titles[id];
+      const part = document.createElement('div'); part.className = 'part'; part.textContent = w.parts[move.part];
+      top.append(title, part);
+      const about = document.createElement('p'); about.className = 'about'; about.textContent = w.about[id];
+      const reads = document.createElement('div'); reads.className = 'reads';
+      const r = readsAs(move), label = document.createElement('span'), mark = document.createElement('span');
+      label.textContent = `${w.readsAs}: `;
+      const main = document.createElement('b'); main.textContent = r.kind ?? r.text;
+      mark.className = r.ok ? 'ok' : 'warn'; mark.textContent = r.ok ? ' ✓' : ` · ${w.expected}: ${move.kind}`;
+      reads.append(label, main, mark);
+      if (r.kind && r.text) { const more = document.createElement('div'); more.textContent = r.text; reads.append(more); }
+      card.append(canvas, top, about, reads);
+      grid.append(card);
+      cards.push({ move, canvas });
+    }
+    box.append(h, grid);
+  }
+}
+$('lang').onclick = () => { lang = lang === 'en' ? 'ko' : 'en'; try { localStorage.setItem('eight.lang', lang); } catch {} build(); };
+build();
+
+// ---- the figures, looping: the moving part brighter, the path of one joint behind it ----
+const HAND_EDGES = [[15, 19], [16, 20]];
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+function draw(canvas, move, t) {
+  const dpr = devicePixelRatio || 1, w = Math.round(canvas.clientWidth * dpr), h = Math.round(w / FIGURE_ASPECT);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const g = canvas.getContext('2d'), X = p => (1 - p[0]) * w, Y = p => p[1] * h; // mirrored, like the display
+  g.clearRect(0, 0, w, h);
+  g.strokeStyle = '#ffffff14'; g.lineWidth = dpr; g.beginPath(); g.moveTo(0, 0.83 * h); g.lineTo(w, 0.83 * h); g.stroke(); // the floor
+  g.fillStyle = '#ffffff22'; g.fillRect(0.5 * w - 2 * dpr, 0.83 * h - 4 * dpr, 4 * dpr, 8 * dpr); // where the dancer started
+  const P = moveFigure(move, t), hot = new Set(move.joints), used = css('--used'), figure = css('--figure');
+  // the trail: where the joint was over the last second
+  const trail = Array.from({ length: 24 }, (_, k) => moveFigure(move, t - (23 - k) / 24)[move.trail]);
+  for (let k = 1; k < trail.length; k++) {
+    g.strokeStyle = used; g.globalAlpha = 0.6 * k / trail.length; g.lineWidth = 3 * dpr; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(X(trail[k - 1]), Y(trail[k - 1])); g.lineTo(X(trail[k]), Y(trail[k])); g.stroke();
+  }
+  g.globalAlpha = 1;
+  for (const [a, b] of [...SKELETON_EDGES, ...HAND_EDGES]) {
+    const on = hot.has(a) && hot.has(b);
+    g.strokeStyle = on ? used : figure; g.globalAlpha = on ? 1 : 0.55; g.lineWidth = (on ? 6 : 4) * dpr; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(X(P[a]), Y(P[a])); g.lineTo(X(P[b]), Y(P[b])); g.stroke();
+  }
+  g.globalAlpha = 0.55; g.strokeStyle = figure; g.lineWidth = 4 * dpr; // the head
+  g.beginPath(); g.arc(X(P[0]), Y(P[0]), 0.045 * h, 0, 2 * Math.PI); g.stroke();
+  g.globalAlpha = 1;
+  for (const i of move.joints) { g.fillStyle = '#fff'; g.beginPath(); g.arc(X(P[i]), Y(P[i]), 3.5 * dpr, 0, 2 * Math.PI); g.fill(); }
+}
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+const frame = now => { for (const c of cards) draw(c.canvas, c.move, still.matches ? 0.6 : now / 1000); requestAnimationFrame(frame); };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

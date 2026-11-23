@@ -1,7 +1,7 @@
 // What the display's character may point out (src/tracking/targets.ts): lacking limbs, heights and sides, and when they were tried.
 const assert = require('./assert.cjs');
 const load = require('../load-ts.cjs');
-const { ringShares, lackingTargets, exploredTargets, TARGET_ORDER } = load('src/tracking/targets.ts');
+const { ringShares, limbShares, lackingTargets, exploredTargets, TARGET_ORDER } = load('src/tracking/targets.ts');
 const { DEFAULT_CONFIG } = load('src/tracking/config.ts');
 
 const u = (segments, level, underused = [], ok = true) => ({ t: 0, window: 'recent', segments, level, current_level: 'mid', underused, tracking_ok: ok });
@@ -13,6 +13,9 @@ assert.deepEqual(ringShares(u(SEG, MID)), { upper: 0.75, lower: 0.25 });
 assert.equal(ringShares(u(SEG, MID, [], false)), null, 'tracking not ok: no rings');
 assert.equal(ringShares(u({ ...SEG, arm_l: 0, arm_r: 0, leg_l: 0, leg_r: 0 }, MID)), null, 'no limb movement: no rings');
 assert.equal(ringShares(undefined), null);
+assert.deepEqual(limbShares(u(SEG, MID)), { arm_l: 0.375, arm_r: 0.375, leg_l: 0.125, leg_r: 0.125 }, 'each limb of the limbs, head and torso left out');
+assert.equal(limbShares(u(SEG, MID, [], false)), null, 'tracking not ok: no limb shares');
+assert.equal(limbShares(u({ ...SEG, arm_l: 0, arm_r: 0, leg_l: 0, leg_r: 0 }, MID)), null, 'no limb movement: no limb shares');
 
 assert.deepEqual(lackingTargets(u(SEG, MID, ['leg_l', 'head']), { left: 0, center: 1, right: 0 }, DEFAULT_CONFIG), ['leg_l', 'low', 'high', 'left', 'right'], 'head is never a target');
 assert.deepEqual(lackingTargets(u(SEG, { low: .2, mid: .6, high: .2 }), null, DEFAULT_CONFIG), [], 'no zones before calibration');

@@ -15,7 +15,16 @@ const SIDES: Exclude<Zone, 'center'>[] = ['left', 'right'];
 const r3 = (x: number) => Math.round(1000 * x) / 1000;
 const ordered = (set: Set<Target>) => TARGET_ORDER.filter(t => set.has(t));
 
-/** Arms against legs for the display's two rings; null while tracking is not ok or the limbs did not move. */
+export type Limb = 'arm_l' | 'arm_r' | 'leg_l' | 'leg_r';
+/** Each limb's share of the limbs' movement (adding up to 1), for the colors of the display's 8; null like ringShares. */
+export function limbShares(usage: UsageMessage | undefined): Record<Limb, number> | null {
+  if (!usage?.tracking_ok) return null;
+  const s = usage.segments, total = s.arm_l + s.arm_r + s.leg_l + s.leg_r;
+  if (!(total > 0)) return null;
+  return { arm_l: r3(s.arm_l / total), arm_r: r3(s.arm_r / total), leg_l: r3(s.leg_l / total), leg_r: r3(s.leg_r / total) };
+}
+
+/** Arms against legs; null while tracking is not ok or the limbs did not move. */
 export function ringShares(usage: UsageMessage | undefined): { upper: number; lower: number } | null {
   if (!usage?.tracking_ok) return null;
   const s = usage.segments, upper = s.arm_l + s.arm_r, total = upper + s.leg_l + s.leg_r;
