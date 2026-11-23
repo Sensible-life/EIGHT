@@ -53,18 +53,15 @@ export class StemPlayer {
   }
   get playbackRate() { return this.speed; }
 
-  setPlaybackRate(rate: number) {
+  async setPlaybackRate(rate: number) {
     if (!Number.isFinite(rate) || rate < 0.5 || rate > 1.5) throw new Error('Playback speed must be between 0.5× and 1.5×.');
-    if (this.playing) {
-      const position = this.position;
-      if (this.playing) {
-        this.startOffset = position;
-        this.startCtxTime = Math.max(this.startCtxTime, this.ctx.currentTime);
-        for (const source of this.sources) source.playbackRate.value = rate;
-      }
-    }
-    for (const source of Object.values(this.fileSources)) source.playbackRate = rate;
+    if (rate === this.speed) return;
+    const position = this.playing ? this.position : this.pausedAt;
     this.speed = rate;
+    for (const source of Object.values(this.fileSources)) source.playbackRate = rate;
+    // A pending grouped seek will start all files with the new rate. Otherwise
+    // restart the whole group at one position instead of changing active nodes serially.
+    if (this.playing && !this.filePreparing) await this.play(position);
   }
 
   /** stem 파일들을 받아 디코드. onProgress(완료 수, 전체 수) */
@@ -243,7 +240,7 @@ export class StemPlayer {
       for (const source of sources) source.seekToTime(offset);
       await new Promise<void>(resolve => setTimeout(resolve, 300));
       if (this.disposed || generation !== this.playGeneration) return;
-      const startAt = this.ctx.currentTime + .2;
+      const startAt = this.ctx.currentTime + .08;
       for (const source of sources) source.start(startAt);
       this.filePreparing = false;
       this.startCtxTime = startAt; this.startOffset = offset; this.playing = true;
@@ -271,9 +268,12 @@ export class StemPlayer {
         return;
       }
     }
-    const startAt = this.ctx.currentTime + .2;
+    const startAt = this.ctx.currentTime + .08;
     this.sources = prepared;
-    for (const src of prepared) src.start(startAt - (typeof src.getLatency === 'function' ? src.getLatency() : 0), offset);
+    for (const src of prepared) {
+      src.playbackRate.value = this.speed;
+      src.start(startAt - (typeof src.getLatency === 'function' ? src.getLatency() : 0), offset);
+    }
     this.startCtxTime = startAt;
     this.startOffset = offset;
     this.playing = true;

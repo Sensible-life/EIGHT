@@ -88,7 +88,7 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, mis
         const restoredMix = initialMix(p.stems);
         for (const stem of p.stems) if (initial?.mix[stem]) restoredMix[stem] = initial.mix[stem];
         const restoredMaster = initial?.master ?? .8;
-        p.setPlaybackRate(initial?.playbackRate ?? 1);
+        await p.setPlaybackRate(initial?.playbackRate ?? 1);
         p.setMaster(restoredMaster); setMaster(restoredMaster);
         for (const stem of p.stems) p.setGain(stem, layerGain(restoredMix, stem));
         if (initial?.loop && initial.loop.end <= p.duration) { await p.setLoop(initial.loop); setLoopRange(initial.loop); }
@@ -131,7 +131,19 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, mis
     }, 100);
     return () => clearInterval(interval);
   }, [playing, scrubbing, composition, loopRange]);
-  useEffect(() => { for (const stem of Object.keys(mix)) player.current?.setGain(stem, layerGain(mix, stem)); }, [mix]);
+  const appliedGains = useRef<{ player: StemPlayer | null; values: Record<string, number> }>({ player: null, values: {} });
+  useEffect(() => {
+    const p = loadedPlayer;
+    if (!p) return;
+    if (appliedGains.current.player !== p) appliedGains.current = { player: p, values: {} };
+    for (const stem of Object.keys(mix)) {
+      const gain = layerGain(mix, stem);
+      if (appliedGains.current.values[stem] !== gain) {
+        p.setGain(stem, gain);
+        appliedGains.current.values[stem] = gain;
+      }
+    }
+  }, [mix, loadedPlayer]);
   useEffect(() => { player.current?.setMaster(master); }, [master]);
   useEffect(() => {
     latest.current = { position: pos, duration, mix, master, loop: loopRange, playbackRate, listened: listened.current, layerSeconds: layerSeconds.current, ...(composition && { composition }) };
@@ -278,7 +290,7 @@ export default function PlayerScreen({ server, job, onBack, initialSnapshot, mis
         {onFinish && <Pressable accessibilityRole="button" disabled={recordingVideo} onPress={() => { void perform(async p => { await p.pause(); onFinish(withTracking(tracking, { ...latest.current, position: p.position, listened: listened.current, layerSeconds: { ...layerSeconds.current } })); }); }} style={[s.primary, { marginTop: 24, alignItems: 'center' }]}><Text style={s.primaryText}>End session and save</Text></Pressable>}
       </ScrollView>
       <View style={s.dock}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}><Text style={s.time}>Speed</Text>{[0.5, 0.75, 1, 1.25, 1.5].map(rate => <Pressable accessibilityRole="button" accessibilityState={{ selected: playbackRate === rate, disabled: recordingVideo }} disabled={recordingVideo} key={rate} onPress={() => { player.current?.setPlaybackRate(rate); setPlaybackRate(rate); }} style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 10, backgroundColor: playbackRate === rate ? C.cardHi : 'transparent', opacity: recordingVideo ? 0.5 : 1 }}><Text style={{ color: playbackRate === rate ? C.accent : C.sub, fontSize: 11 }}>{rate}×</Text></Pressable>)}</View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}><Text style={s.time}>Speed</Text>{[0.5, 0.75, 1, 1.25, 1.5].map(rate => <Pressable accessibilityRole="button" accessibilityState={{ selected: playbackRate === rate, disabled: recordingVideo }} disabled={recordingVideo} key={rate} onPress={() => { setPlaybackRate(rate); void player.current?.setPlaybackRate(rate).catch(e => setError(displayMessage(e))); }} style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 10, backgroundColor: playbackRate === rate ? C.cardHi : 'transparent', opacity: recordingVideo ? 0.5 : 1 }}><Text style={{ color: playbackRate === rate ? C.accent : C.sub, fontSize: 11 }}>{rate}×</Text></Pressable>)}</View>
         <View style={s.timeRow}><Text style={s.time}>{fmtTime(pos)}</Text><Text style={s.time}>{fmtTime(duration)}</Text></View>
         <Slider accessibilityLabel={"Playback position"} disabled={recordingVideo} style={s.seekSlider} minimumValue={0} maximumValue={duration || 1} value={pos} minimumTrackTintColor={C.accent} maximumTrackTintColor={C.line} thumbTintColor={C.accent} onSlidingStart={() => setScrubbing(true)} onValueChange={setPos} onSlidingComplete={time => { setScrubbing(false); void seek(time); }} />
         <View style={s.transport}>
