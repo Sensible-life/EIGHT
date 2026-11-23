@@ -45,7 +45,7 @@ Video and landmarks stay in the page; the relay passes only known words and boun
 
 `display_agent.py` contains a separate in-memory `MovementGuide` per publishing session:
 
-1. **Observe:** accept normalized arm/leg aggregates and the existing tracker's observable `underused` targets.
+1. **Observe:** accept normalized arm/leg aggregates and the existing tracker's observable `underused` targets. Each `Observation` also carries the latest checked movement reading (`movement`, `parts`, `space`: the same words the display shows, from the webcam or the phone), so a `ProposalGenerator` can base its idea on how the dancer is moving, not only on the target.
 2. **Decide:** require stable tracking, warm-up and sustained evidence plus either 120 seconds without a save or three passes through a selected loop. Only playback time received during this display session counts; a save resets the timer. Cooldowns limit interruptions. The demo uses a shorter seven-second timer. Real phone input currently publishes movement only during a recording.
 3. **Ask:** show the character’s help request; only generate a suggestion if the user accepts it.
 4. **Propose:** the injected `ProposalGenerator` turns the chosen target into a short creative prompt. `LocalPromptGenerator` is currently deterministic and rule-based; it is **not an LLM or trained AI model**. The generator interface is the boundary for evaluating a model provider later; a model must not bypass the local eligibility rules. A remote model must run outside the WebSocket event loop, with a deadline and validated output; the current synchronous interface is intended for fast local generation.

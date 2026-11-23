@@ -28,6 +28,12 @@ class Observation:
     webcam: bool = False  # a webcam reads the dancer: no phone save / loop needed, answers by an overhead O
     explored: tuple[str, ...] = ()  # targets tried in the last 8-count
     answering: bool = False  # an overhead O is being held
+    # The latest movement reading, as the relay checked it (projection.py): words and bounded numbers, never
+    # landmarks. For a generator that wants more than the target: movement = speed / size / direction / texture /
+    # lead / timing, parts = what each arm, leg and the torso did, space = zone / level / depth / weight / offsets.
+    movement: dict | None = None
+    parts: dict | None = None
+    space: dict | None = None
 
 
 @dataclass(frozen=True)

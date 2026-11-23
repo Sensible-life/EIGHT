@@ -7,10 +7,25 @@ import unittest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app import projection
-from app.display_agent import MovementGuide, Observation
+from app.display_agent import MovementGuide, Observation, ProposalText
 
 ROOM = '0123456789abcdef'
 CELLS = [0.0] * 64
+MOVEMENT = {'speed': 'medium', 'size': 'large', 'direction': 'in place', 'texture': 'smooth', 'lead': 'arm_l', 'timing': None}
+HOLD = {'kind': 'hold', 'speed': 'still', 'size': 'small', 'texture': None, 'toward': 'down', 'timing': None}
+PARTS = {'arm_l': {**HOLD, 'kind': 'circle', 'speed': 'medium', 'texture': 'smooth'}, 'arm_r': HOLD, 'leg_l': HOLD, 'leg_r': HOLD, 'torso': {**HOLD, 'toward': None}}
+SPACE = {'zone': 'center', 'level': 'mid', 'depth': 'home', 'weight': 'center', 'x': 0.1, 'y': 0, 'width': 0.4}
+
+
+class Recorder:
+    """A proposal generator that keeps the observation it was given."""
+
+    def __init__(self):
+        self.seen = None
+
+    def generate(self, observation, target):
+        self.seen = observation
+        return ProposalText('Go low', 'Bring your movement closer to the floor.', '↓')
 
 
 def mini_app():
@@ -91,6 +106,13 @@ class WebcamGuideTests(unittest.TestCase):
         for i in range(400):
             self.assertIsNone(self.g.observe(Observation(True, .7, .3, ('leg_l',)), i * .5)['proposal'])
 
+    def test_generator_sees_the_movement_reading(self):
+        recorder = Recorder()
+        self.g = MovementGuide(generator=recorder)
+        ask = self.ask(movement=MOVEMENT, parts=PARTS, space=SPACE)
+        self.assertTrue(self.g.respond(ask['id'], 'accept', 15.2))
+        self.assertEqual((recorder.seen.movement, recorder.seen.parts, recorder.seen.space), (MOVEMENT, PARTS, SPACE))
+
     def test_timers_are_reported(self):
         timers = self.run_until(5)['timers']
         self.assertEqual(timers, {'warmup': 10.0, 'cooldown': 0.0, 'holding': {'leg_l': 5.0}, 'answer': None})
@@ -146,6 +168,20 @@ class WebcamRelayTests(unittest.TestCase):
                     publisher.send_json({'active': True, 'cells': CELLS, 'body': {'upper': .5, 'lower': .5, 'underused': ['attic']}})
                     self.assertNotIn('body', viewer.receive_json())
 
+    def test_relay_hands_the_reading_to_the_guide(self):
+        body = {'upper': .7, 'lower': .3, 'underused': ['low']}
+        with TestClient(mini_app()) as client:
+            with client.websocket_connect(f'/projection/ws/{ROOM}/view') as viewer:
+                with client.websocket_connect(f'/projection/ws/{ROOM}/publish') as publisher:
+                    publisher.send_json({'active': True, 'cells': CELLS, 'source': 'webcam', 'body': body, 'movement': MOVEMENT, 'parts': PARTS, 'space': SPACE})
+                    viewer.receive_json()
+                    seen = projection.rooms[ROOM]['guide'].last_observation
+                    self.assertEqual((seen.movement, seen.parts, seen.space), (MOVEMENT, PARTS, SPACE))
+                    publisher.send_json({'active': True, 'cells': CELLS, 'source': 'webcam', 'body': body, 'movement': {**MOVEMENT, 'speed': 'warp'}, 'parts': {'arm_l': HOLD}, 'space': SPACE})
+                    viewer.receive_json()
+                    seen = projection.rooms[ROOM]['guide'].last_observation
+                    self.assertEqual((seen.movement, seen.parts, seen.space), (None, None, SPACE), 'only checked words reach the guide')
+
     def test_camera_reading_counts_as_webcam(self):
         with TestClient(mini_app()) as client:
             with client.websocket_connect(f'/projection/ws/{ROOM}/view') as viewer:
@@ -154,11 +190,13 @@ class WebcamRelayTests(unittest.TestCase):
                         phone.send_json({'active': False, 'cells': CELLS, 'context': {'position': 1.0, 'playing': True, 'saveRevision': 0}})
                         viewer.receive_json()
                         camera.receive_json()  # the phone's clock, for the webcam's beat
-                        camera.send_json({'body': {'upper': .6, 'lower': .4, 'underused': ['right']}, 'explored': [], 'answering': True})
+                        camera.send_json({'body': {'upper': .6, 'lower': .4, 'underused': ['right']}, 'explored': [], 'answering': True, 'movement': MOVEMENT, 'parts': PARTS, 'space': SPACE})
                         phone.send_json({'active': False, 'cells': CELLS, 'context': {'position': 1.25, 'playing': True, 'saveRevision': 0}})
                         packet = viewer.receive_json()
                         self.assertEqual(packet['body']['underused'], ['right'], 'the webcam reading stands in for the phone camera')
                         self.assertEqual(packet['agent']['timers']['warmup'], 15.0, 'webcam rules even in a phone session')
+                        seen = projection.rooms[ROOM]['guide'].last_observation
+                        self.assertEqual((seen.movement, seen.parts, seen.space), (MOVEMENT, PARTS, SPACE), 'the webcam words reach the guide too')
 
 
 if __name__ == '__main__':

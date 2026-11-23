@@ -236,7 +236,8 @@ async def relay(ws: WebSocket, room: str, role: str):
                                                    upper=body['upper'] if body else None,
                                                    lower=body['lower'] if body else None,
                                                    underused=tuple(body['underused']) if body else (), position=pos, loop_start=loop['start'] if loop else None, loop_end=loop['end'] if loop else None, save_revision=rev, playing=context.get('playing') if type(context.get('playing')) is bool else None,
-                                                   webcam=webcam, explored=tuple(explored), answering=answering), now)
+                                                   webcam=webcam, explored=tuple(explored), answering=answering,
+                                                   movement=movement, parts=packet.get('parts'), space=packet.get('space')), now)  # the checked reading, for the generator
                 if body is not None:
                     packet['agent'] = agent
                 previous_agent = json.loads(state['last']).get('agent') if state['last'] else None
