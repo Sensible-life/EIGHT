@@ -1,7 +1,7 @@
-// Movement labels (server/app/movement.js): scripted figures are read as the way they move.
-// Run: node server/tests/movement.test.mjs
-import assert from 'node:assert/strict';
-import { MovementClassifier } from '../app/movement.js';
+// Movement labels (src/tracking/labels.ts): scripted figures are read as the way they move.
+// Moved from server/tests/movement.test.mjs when the webcam labels joined the tracking code.
+const assert = require('./assert.cjs');
+const { MovementLabeler } = require('../load-ts.cjs')('src/tracking/labels.ts');
 
 /** A standing figure (33 landmarks, upright 3:4 frame; torso 0.2 high), then `pose(t, P)` moves it. Image x grows to the dancer's left. */
 function figure(t, pose) {
@@ -15,18 +15,19 @@ function figure(t, pose) {
 const shift = (P, dx, dy, only = () => true) => P.forEach((p, i) => { if (only(i)) { p[0] += dx; p[1] += dy; } });
 const UPPER = i => i < 25; // everything but knees and feet
 const BEAT = 0.5, STILL = 3; // every run starts with 3 s standing still: the calibration
-/** `seconds` of the figure moving after the still start (pose gets the time since the movement began), then the label. */
-function run(pose, { seconds = 8, music = true, hide = () => [] } = {}) {
-  const c = new MovementClassifier();
+/** The labeler after `seconds` of the figure moving after the still start (pose gets the time since the movement began). */
+function runLabeler(pose, { seconds = 8, music = true, hide = () => [] } = {}) {
+  const c = new MovementLabeler();
   for (let i = 0; i < (STILL + seconds) * 30; i++) {
     const t = i / 30, hidden = hide(i);
     c.add({ tMs: 1000 * t, image: figure(t - STILL, t >= STILL ? pose : null), visibility: Array.from({ length: 33 }, (_, j) => (hidden.includes(j) ? 0 : 1)), aspect: 0.75, musicT: music ? t : null, beatS: music ? BEAT : null });
   }
   assert.ok(c.calibrated, 'the still start calibrates');
-  return c.label();
+  return c;
 }
+const run = (pose, o) => runLabeler(pose, o).label();
 
-assert.equal(new MovementClassifier().label(), null, 'no frames: no label');
+assert.equal(new MovementLabeler().label(), null, 'no frames: no label');
 {
   const m = run();
   assert.deepEqual([m.speed, m.size, m.direction, m.texture, m.lead, m.timing], ['still', 'small', 'in place', null, null, null]);
@@ -64,6 +65,15 @@ assert.equal(run(null, { hide: i => (i % 2 ? [15, 11] : []) }).speed, 'still', '
   assert.notEqual(m.parts.leg_r.kind, 'hold', JSON.stringify(m.parts.leg_r));
   assert.equal(m.parts.leg_l.kind, 'hold');
   assert.equal(m.parts.arm_l.kind, 'hold');
+}
+{
+  // both arms swing the same; the left arm (13, 15) is hidden while moving: unknown, not 'hold'
+  const swing = (t, P) => { const s = Math.sin(2 * Math.PI * t); P[16][0] -= 0.12 * s; P[14][0] -= 0.06 * s; P[15][0] += 0.12 * s; P[13][0] += 0.06 * s; };
+  const m = run(swing, { hide: i => (i >= STILL * 30 ? [13, 15] : []) });
+  assert.equal(m.parts.arm_l.kind, null, JSON.stringify(m.parts.arm_l));
+  assert.equal(m.parts.arm_l.speed, null);
+  assert.notEqual(m.parts.arm_r.kind, 'hold');
+  assert.notEqual(m.lead, 'arm_l');
 }
 
 // The torso: hips against the feet, and the whole body against the home spot.
@@ -104,11 +114,23 @@ assert.equal(run((t, P) => shift(P, 0.07, 0, UPPER)).space.weight, 'left', 'hips
 assert.equal(run((t, P) => P.forEach(p => { p[0] = 0.5 + 1.4 * (p[0] - 0.5); p[1] = 0.5 + 1.4 * (p[1] - 0.5); })).space.depth, 'near', 'bigger in the frame: closer to the camera');
 {
   // without a still start there is no home spot, so no space; the parts still read
-  const c = new MovementClassifier();
+  const c = new MovementLabeler();
   for (let i = 0; i < 240; i++) { const t = i / 30; c.add({ tMs: 1000 * t, image: figure(t, (u, P) => shift(P, 0.12 * Math.sin(Math.PI * u / 2), 0)), visibility: Array(33).fill(1), aspect: 0.75, musicT: null, beatS: null }); }
   assert.equal(c.calibrated, false);
   assert.equal(c.label().space, null);
   assert.equal(c.label().parts.torso.kind, 'travel');
   assert.equal(c.label().timing, null, 'no music: no timing');
+}
+
+// Zone shares over time, for the guide's left / right targets.
+{
+  // 3 s still at home, then walks a torso and a half to their left at once and stays there for 10 s
+  const c = runLabeler((t, P) => shift(P, 0.3, 0), { seconds: 10 });
+  const z = c.zoneShares(30);
+  assert.ok(z.left > 0.5 && Math.abs(z.left + z.center + z.right - 1) < 1e-9, JSON.stringify(z));
+  assert.ok(c.zoneShares(4).left > 0.99, 'the last 4 s were all on the left');
+  assert.equal(new MovementLabeler().zoneShares(30), null, 'not calibrated: no zones');
+  c.reset();
+  assert.equal(c.zoneShares(30), null, 'reset forgets the home spot and the zone history');
 }
 console.log('PASS: movement labels');

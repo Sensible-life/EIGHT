@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import uuid4
 
-TARGETS = ('arm_l', 'arm_r', 'leg_l', 'leg_r')
+# Limbs, heights, the dancer's sides (app/src/tracking/targets.ts TARGET_ORDER): also the tie-break order.
+TARGETS = ('arm_l', 'arm_r', 'leg_l', 'leg_r', 'low', 'high', 'left', 'right')
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,15 @@ class Observation:
     playing: bool | None = None
     project_usage: dict[str, float] | None = None
     overall_usage: dict[str, float] | None = None
+    webcam: bool = False  # a webcam reads the dancer: no phone save / loop needed, answers by an overhead O
+    explored: tuple[str, ...] = ()  # targets tried in the last 8-count
+    answering: bool = False  # an overhead O is being held
+    # The latest movement reading, as the relay checked it (projection.py): words and bounded numbers, never
+    # landmarks. For a generator that wants more than the target: movement = speed / size / direction / texture /
+    # lead / timing, parts = what each arm, leg and the torso did, space = zone / level / depth / weight / offsets.
+    movement: dict | None = None
+    parts: dict | None = None
+    space: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -41,42 +51,38 @@ class ProposalGenerator(Protocol):
 
 
 class LocalPromptGenerator:
-    """Combine movement prompts while rotating ideas within a session."""
-    PARTS = {'arm_l': 'left arm', 'arm_r': 'right arm', 'leg_l': 'left leg', 'leg_r': 'right leg'}
-    IDEAS = {
-        'arm': (
-            ('Reach outward', 'Make it wide, then connect it to your next move.', '↗'),
-            ('Draw a circle', 'Keep it close to your body, then open outward.', '◯'),
-            ('Push and release', 'Change direction as you move into the next step.', '→'),
-            ('Start a wave', 'Let the motion travel into another body part.', '〜'),
-        ),
-        'leg': (
-            ('Take a side step', 'Make it wide, then connect it to your next move.', '↔'),
-            ('Step and pause', 'Keep the step small, then hold a pose.', '■'),
-            ('Shift your weight', 'Change direction as you move into the next step.', '↘'),
-            ('Trace a circle', 'Let the step lead into a turn.', '◯'),
-        ),
+    """Starter policy; these examples are creative prompts, not prescriptions."""
+    PROMPTS = {
+        'arm_l': ProposalText('Start with your left arm', 'Try a wider reach, then connect it to your next move.', '↗'),
+        'arm_r': ProposalText('Start with your right arm', 'Try a wider reach, then connect it to your next move.', '↗'),
+        'leg_l': ProposalText('Lead with your left leg', 'Add a small step and explore a new direction.', '↘'),
+        'leg_r': ProposalText('Lead with your right leg', 'Add a small step and explore a new direction.', '↘'),
+        'low': ProposalText('Go low', 'Bring your movement closer to the floor for the next counts.', '↓'),
+        'high': ProposalText('Go high', 'Rise up and reach above your usual height.', '↑'),
+        'left': ProposalText('Explore your left side', 'Travel a few steps to your left and dance there.', '←'),
+        'right': ProposalText('Explore your right side', 'Travel a few steps to your right and dance there.', '→'),
     }
 
-    def __init__(self):
-        self.generated = {target: 0 for target in TARGETS}
-
     def generate(self, observation: Observation, target: str) -> ProposalText:
-        ideas = self.IDEAS[target.split('_')[0]]
-        index = self.generated[target]
-        self.generated[target] += 1
-        action, detail, symbol = ideas[index % len(ideas)]
-        return ProposalText(f'{action} with your {self.PARTS[target]}', detail, symbol)
+        return self.PROMPTS[target]
 
 
 class MovementGuide:
     """One instance per publisher session. Time is supplied by a monotonic clock."""
     def __init__(self, generator: ProposalGenerator | None = None, *, warmup: float = 20,
                  persistence: float = 6, cooldown: float = 90, target_cooldown: float = 180,
-                 proposal_lifetime: float = 20, no_save_after: float = 120, repeat_threshold: int = 3):
+                 proposal_lifetime: float = 20, no_save_after: float = 120, repeat_threshold: int = 3,
+                 webcam_warmup: float = 15, webcam_persistence: float = 8, webcam_cooldown: float = 30,
+                 webcam_target_cooldown: float = 60, answer_window: float = 12, explore_window: float = 60):
         self.generator = generator or LocalPromptGenerator()
         self.warmup, self.persistence, self.cooldown = warmup, persistence, cooldown
         self.target_cooldown, self.proposal_lifetime = target_cooldown, proposal_lifetime
+        # When a webcam reads the dancer there is no phone save or loop: a lack that lasts is reason enough to ask.
+        self.webcam_rules = {'warmup': webcam_warmup, 'persistence': webcam_persistence, 'cooldown': webcam_cooldown, 'target_cooldown': webcam_target_cooldown}
+        self.answer_window, self.explore_window = answer_window, explore_window
+        self.webcam = False
+        self.watching: tuple[str, float] | None = None  # an accepted suggestion's target, and since when
+        self.response_target: str | None = None
         self.started: float | None = None
         self.holding: dict[str, float] = {}
         self.last_offered: float | None = None
@@ -128,38 +134,57 @@ class MovementGuide:
         if self.started is None:
             self.started = now
         self.last_observation = observation
+        self.webcam = observation.webcam
+        rules = self.rules()
         allowed = [target for target in TARGETS if target in observation.underused]
         self.holding = {target: self.holding.get(target, now) for target in allowed}
+        if self.watching:  # did the dancer try the accepted suggestion?
+            target, since = self.watching
+            if now - since > self.explore_window:
+                self.watching = None
+            elif target in observation.explored:
+                self.watching = None
+                if self.pending and self.pending['kind'] == 'suggestion':
+                    self.pending = None
+                self.response, self.response_target, self.response_until = 'explored', target, now + 5
+                return self.public(now)
+        if (observation.webcam and self.pending and self.pending['kind'] == 'help' and not observation.answering
+                and now - self.pending['createdAt'] >= self.answer_window):  # no O in time: a no
+            self.pending = None
+            self.response = 'unanswered'
+            self.response_until = now + 4
+            return self.public(now)
         if self.pending and now - self.pending['createdAt'] >= self.proposal_lifetime:
             self.pending = None
             self.response = 'expired'
             self.response_until = now + 4
         if not self.enabled or self.pending or now < self.response_until:
             return self.public(now)
-        if now - self.started < self.warmup or (self.last_offered is not None and now - self.last_offered < self.cooldown):
+        if now - self.started < rules['warmup'] or (self.last_offered is not None and now - self.last_offered < rules['cooldown']):
             return self.public(now)
         ready = [target for target, since in self.holding.items()
-                 if now - since >= self.persistence and now - self.target_offered.get(target, float('-inf')) >= self.target_cooldown]
+                 if now - since >= rules['persistence'] and now - self.target_offered.get(target, float('-inf')) >= rules['target_cooldown']]
         if not ready:
             return self.public(now)
-        trigger = 'repetition' if self.repeat_ready else 'no_save' if observation.save_revision is not None and self.active_without_save >= self.no_save_after else None
+        if observation.webcam:
+            trigger = 'sustained'
+        else:
+            trigger = 'repetition' if self.repeat_ready else 'no_save' if observation.save_revision is not None and self.active_without_save >= self.no_save_after else None
         if not trigger:
             return self.public(now)
-        # Prefer targets the dancer has accepted over repeatedly dismissed ones.
-        # Longer observed evidence breaks ties, followed by the stable target order.
-        def priority(item: str):
-            project = observation.project_usage or {}
-            overall = observation.overall_usage or {}
-            # Missing history is neutral, not evidence that a body part was unused.
-            return (self.target_feedback[item], -project.get(item, .5),
-                    -overall.get(item, .5), now - self.holding[item], -TARGETS.index(item))
-        target = max(ready, key=priority)
-        part = LocalPromptGenerator.PARTS[target]
-        reason = (f'Your {part} was identified as less active in the recent tracking window. '
-                  + ('The selected loop was played repeatedly.' if trigger == 'repetition'
-                     else 'There was no new save during the recent active playback period.'))
-        if observation.project_usage and target in observation.project_usage:
-            reason += ' Earlier tracked sessions in this project were also considered when choosing between observed targets.'
+        # The webcam names what has been missing longest; ties go by TARGETS order. The phone keeps its first-ready pick.
+        def priority(target: str):
+            return (self.target_feedback[target], -(observation.project_usage or {}).get(target, .5),
+                    -(observation.overall_usage or {}).get(target, .5), now - self.holding[target], -TARGETS.index(target))
+        target = min(ready, key=lambda t: (self.holding[t], TARGETS.index(t))) if observation.webcam else max(ready, key=priority)
+        names = {'arm_l': 'left arm', 'arm_r': 'right arm', 'leg_l': 'left leg', 'leg_r': 'right leg', 'low': 'low level', 'high': 'high level', 'left': 'left side', 'right': 'right side'}
+        reason = f'Recent tracking identified {names[target]} as less explored.'
+        if trigger == 'repetition':
+            reason += ' The selected loop was played repeatedly.'
+        elif trigger == 'no_save':
+            reason += ' There was no new save during the recent active playback period.'
+        if not observation.webcam and observation.project_usage and target in observation.project_usage:
+            reason += ' Earlier tracked sessions in this project were considered when choosing between targets.'
         self.pending = {'id': uuid4().hex, 'kind': 'help', 'target': target,
                         'title': 'Need some help?', 'detail': 'Want a movement idea?',
                         'symbol': '✦', 'trigger': trigger, 'reason': reason, 'createdAt': now}
@@ -182,6 +207,7 @@ class MovementGuide:
                 if not isinstance(text, ProposalText) or not all(isinstance(value, str) and 0 < len(value) <= limit for value, limit in ((text.title, 100), (text.detail, 200), (text.symbol, 8))):
                     raise ValueError('Invalid proposal')
                 self.pending = {'id': uuid4().hex, 'kind': 'suggestion', 'target': self.pending['target'], 'title': text.title, 'detail': text.detail, 'symbol': text.symbol, 'reason': self.pending['reason'], 'createdAt': now}
+                self.watching = (self.pending['target'], now)
             except Exception:
                 self.pending = None
                 self.response = 'unavailable'
@@ -201,7 +227,21 @@ class MovementGuide:
             self.pending = None
             self.response = None
 
+    def rules(self) -> dict:
+        """Warm-up, persistence and cooldowns for whoever reads the dancer now."""
+        if self.webcam:
+            return self.webcam_rules
+        return {'warmup': self.warmup, 'persistence': self.persistence, 'cooldown': self.cooldown, 'target_cooldown': self.target_cooldown}
+
     def public(self, now: float, *, tracking: bool = True) -> dict:
         state = 'paused' if not self.enabled else 'waiting' if not tracking else ('asking' if self.pending['kind'] == 'help' else 'offered') if self.pending else self.response if self.response and now < self.response_until else 'observing'
         proposal = {key: value for key, value in self.pending.items() if key != 'createdAt'} if self.pending else None
-        return {'state': state, 'proposal': proposal, 'mode': 'local'}
+        rules, left = self.rules(), lambda span, since: round(max(0.0, span - (now - since)), 2)
+        timers = {  # seconds left, for the display's debug view
+            'warmup': left(rules['warmup'], self.started) if self.started is not None else float(rules['warmup']),
+            'cooldown': left(rules['cooldown'], self.last_offered) if self.last_offered is not None else 0.0,
+            'holding': {target: round(now - since, 2) for target, since in self.holding.items()},
+            'answer': left(self.answer_window, self.pending['createdAt']) if self.webcam and self.pending and self.pending['kind'] == 'help' else None,
+        }
+        return {'state': state, 'proposal': proposal, 'mode': 'local', 'timers': timers,
+                'target': self.response_target if state == 'explored' else None}

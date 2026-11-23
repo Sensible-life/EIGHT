@@ -2,7 +2,8 @@ import { Text } from '../../ui/Typography';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { floorTransform, ImageHeatmap, type Point } from '../../projection/heatmap';
-import { bodySummary } from '../../projection/bodySummary';
+import { DEFAULT_CONFIG } from '../../tracking/config';
+import { buildPacket } from '../../tracking/display';
 import type { LiveTrackingStore } from '../../tracking/store';
 import { C } from '../../theme';
 import { useLibrary } from '../../state/LibraryProvider';
@@ -59,8 +60,13 @@ export default function ProjectionCard({ projectId, sessionId, store, server, pl
     const timer = setInterval(() => {
       if (socket.readyState !== WebSocket.OPEN) return;
       const view = store.getView(), active = recordingRef.current && live.current && view.status?.state === 'tracking' && !!view.usage['8count']?.tracking_ok && !!view.pose && Date.now() - view.pose.t < 500;
-      const music = store.getMusicSnapshot();
-      socket.send(JSON.stringify({ active, missionTitle, context: { position: music?.position ?? null, playing: music?.playing === true, loop: contextRef.current.loop, saveRevision: contextRef.current.saveRevision, ...historyRef.current }, recording: recordingRef.current, calibrated: calibrated.current, cells: heat.current.update(view.pose, active, Date.now()), ...(active ? { body: bodySummary(view.usage.recent, view.pose) } : {}) }));
+      const music = store.getMusicSnapshot(), labeler = store.labeler, windows = DEFAULT_CONFIG.aggregate.windows;
+      // The same packet the webcam display builds (tracking/display.ts): rings, movement words, what is lacking and tried.
+      const packet = buildPacket({
+        source: 'phone', active, cells: heat.current.update(view.pose, active, Date.now()), label: active ? labeler.label() : null, usage: view.usage,
+        zones30: labeler.zoneShares(windows.recent_s), zones8: labeler.zoneShares(windows['8count_s']), answering: false,
+      }, DEFAULT_CONFIG);
+      socket.send(JSON.stringify({ ...packet, calibrated: calibrated.current, missionTitle, context: { position: music?.position ?? null, playing: music?.playing === true, loop: contextRef.current.loop, saveRevision: contextRef.current.saveRevision, ...historyRef.current }, recording: recordingRef.current }));
     }, 250);
     return () => { clearInterval(timer); socketRef.current = null; agentCallback.current(null); if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ active: false, cells: Array(64).fill(0) })); socket.close(); };
   }, [enabled, base, room, store, missionTitle]);

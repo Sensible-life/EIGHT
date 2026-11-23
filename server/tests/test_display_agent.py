@@ -12,7 +12,7 @@ class GuideTests(unittest.TestCase):
                                   overall_usage={'arm_l': .1, 'leg_r': .8})
         self.assertEqual(guide.observe(observation, 0)['proposal']['target'], 'leg_r')
 
-    def test_feedback_changes_target_choice_and_prompts_rotate(self):
+    def test_feedback_changes_target_choice(self):
         guide = MovementGuide(warmup=0, persistence=0, no_save_after=0, cooldown=0, target_cooldown=0)
         observation = Observation(True, .5, .5, ('arm_l', 'leg_r'), save_revision=0)
         first = guide.observe(observation, 0)['proposal']
@@ -28,7 +28,7 @@ class GuideTests(unittest.TestCase):
         generator = LocalPromptGenerator()
         one = generator.generate(observation, 'arm_l')
         two = generator.generate(observation, 'arm_l')
-        self.assertNotEqual(one.title, two.title)
+        self.assertEqual(one.title, two.title)
         self.assertIn('left arm', two.title)
 
     def setUp(self):

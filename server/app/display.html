@@ -14,111 +14,408 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
 .dashboard{display:flex;flex-direction:column;gap:14px}.card{border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,#ffffff0e,#ffffff05);padding:clamp(18px,2vw,26px)}.card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.card h2{font-size:16px;letter-spacing:-.02em;margin:5px 0 0}.micro{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#c99ccc}.info{font-size:11px;color:var(--muted)}.heat-layout{display:flex;align-items:center;gap:22px;margin-top:18px}.heat{width:min(47%,180px);flex:none;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);gap:3px}.cell{background:#302538;border-radius:3px;transition:background .35s}.heat-copy{font-size:13px;line-height:1.55;color:#d1c3d6}.heat-copy small{color:#a99aaf}.legend{height:4px;border-radius:4px;background:linear-gradient(90deg,#44324e,#a240be,#ef8ee6);margin-top:12px}
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;min-height:34px}.tag{border:1px solid var(--line);border-radius:99px;padding:7px 12px;font-size:13px;background:#ffffff0a}.tag small{color:var(--muted);margin-right:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
 .guide{min-height:180px;position:relative;overflow:hidden}.guide:before{content:"";position:absolute;width:180px;height:180px;right:-60px;top:-80px;background:#cf48db;filter:blur(80px);opacity:.24;pointer-events:none}.guide-content{position:relative}.guide-label{display:flex;justify-content:space-between;gap:12px;align-items:center}.guide-title{font-size:clamp(18px,2.1vw,25px);line-height:1.22;letter-spacing:-.03em;font-weight:650;margin:14px 0 6px}.guide-desc{color:#cbbdd1;font-size:13px;line-height:1.5;max-width:430px}.actions{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}button{font:inherit;cursor:pointer}.button{border:0;border-radius:99px;padding:10px 17px;background:#f4eaf6;color:#211727;font-size:12px;font-weight:700}.button.secondary{background:#ffffff12;color:#ebdded;border:1px solid #ffffff20}.button:focus-visible,.toggle:focus-visible{outline:2px solid #f3a6ef;outline-offset:3px}.toggle{border:0;background:none;padding:8px 0;color:#d5bcda;font-size:11px}.foot{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;color:#9f90a8;font-size:11px;line-height:1.5}.foot a{color:#e4c2e7;text-decoration:none}.hidden{display:none!important}
+.answer{display:flex;align-items:center;gap:14px;margin-top:16px;font-size:clamp(15px,1.6vw,20px);font-weight:650;color:#f8eafa}.answer svg{width:clamp(44px,4.5vw,60px);height:clamp(44px,4.5vw,60px);flex:none;transform:rotate(-90deg)}.answer .track{stroke:#ffffff22}.answer .fill{stroke:#f078eb;transition:stroke-dashoffset .1s linear}
+.notice{position:fixed;left:50%;top:clamp(70px,12vh,120px);transform:translateX(-50%);z-index:5;background:#1d1626ee;border:1px solid #ffffff2a;border-radius:22px;padding:18px 26px;text-align:center;font-size:clamp(20px,2.6vw,34px);font-weight:650;letter-spacing:-.02em;box-shadow:0 18px 50px #0008;max-width:calc(100vw - 32px)}.notice small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:6px;letter-spacing:0}.bar{height:6px;border-radius:6px;background:#ffffff1a;margin-top:12px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:#f078eb;transition:width .2s}
+.debug-toggle{border:1px solid var(--line);background:#ffffff08;border-radius:99px;padding:8px 12px;color:#d8ccdf;font-size:11px;letter-spacing:.05em}
+.debug{position:fixed;right:16px;bottom:16px;z-index:6;width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:#140f1cf2;border:1px solid #ffffff2a;border-radius:18px;padding:14px;font-size:12px;line-height:1.5;box-shadow:0 18px 50px #000a;transition:transform .25s}.debug.closed{transform:translateX(calc(100vw + 40px));pointer-events:none}.debug.dragging{transition:none;user-select:none}
+.drag-handle{cursor:grab;touch-action:none;margin:-14px -14px 0;padding:12px 14px 8px;border-radius:18px 18px 0 0}.drag-handle:active{cursor:grabbing}.drag-handle:focus-visible{outline:2px solid #f3a6ef;outline-offset:-2px}
+.stage{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.debug dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:10px 0}.debug dt{color:var(--muted)}.debug dd{margin:0;font-variant-numeric:tabular-nums;word-break:break-word}.debug input{font:inherit;background:#ffffff12;border:1px solid var(--line);border-radius:8px;color:inherit;padding:4px 8px}.debug input[type=number]{width:80px}.debug a{color:#e4c2e7}
 @media(max-width:760px){main{grid-template-columns:1fr;gap:24px}.shell{padding:20px}.figure{width:min(60%,280px)}.visual h1{font-size:32px}.dashboard{padding-bottom:14px}.heat{width:44%}.foot{flex-direction:column;align-items:flex-start}.brand{font-size:19px}}
-@media(prefers-reduced-motion:reduce){.orb,.orbit{animation:none}.figure ellipse,.cell{transition:none}}
+@media(prefers-reduced-motion:reduce){.orb,.orbit{animation:none}.figure ellipse,.cell,.debug{transition:none}}
 </style>
 </head>
 <body>
 <div class="shell">
-<header><div class="brand">Eight <span>8</span></div><div class="top-right"><div id="mode" class="pill">LIVE SPACE</div><div class="pill"><span id="dot" class="dot"></span><span id="status">Connecting</span></div></div></header>
+<header><div class="brand">Eight <span>8</span></div><div class="top-right"><div id="mode" class="pill">LIVE SPACE</div><div class="pill"><span id="dot" class="dot"></span><span id="status">Connecting</span></div><button id="lang" class="debug-toggle" type="button" aria-label="Language">EN / KO</button><button id="debug-toggle" class="debug-toggle" type="button" aria-pressed="false">Debug</button></div></header>
 <main>
-  <section class="visual" aria-label="Movement visualization"><div class="eyebrow">Movement in the moment</div><h1>Your movement,<br>in shape.</h1><div class="sub">An abstract view of your practice.</div>
-    <div id="nudge" class="nudge hidden">Need some help?</div>
+  <section class="visual" aria-label="Movement visualization"><div class="eyebrow" data-i18n="eyebrow">Movement in the moment</div><h1 data-i18n-html="title">Your movement,<br>in shape.</h1><div class="sub" data-i18n="sub">An abstract view of your practice.</div>
+    <div id="nudge" class="nudge hidden" data-i18n="nudge">Need some help?</div>
     <svg class="figure" viewBox="0 0 320 390" role="img" aria-label="Figure eight responds to upper and lower body movement">
       <defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2a4fb"/><stop offset=".5" stop-color="#c65eea"/><stop offset="1" stop-color="#6b78f6"/></linearGradient><radialGradient id="glow"><stop stop-color="#f9c1ff" stop-opacity=".7"/><stop offset="1" stop-color="#f9c1ff" stop-opacity="0"/></radialGradient></defs>
       <circle cx="160" cy="190" r="138" fill="url(#glow)" opacity=".15"/><g class="orbit" opacity=".35" fill="none" stroke="#d9c9ed" stroke-width=".8"><ellipse cx="160" cy="195" rx="150" ry="43" transform="rotate(-32 160 195)"/><ellipse cx="160" cy="195" rx="148" ry="49" transform="rotate(34 160 195)"/></g>
       <ellipse id="upper-ring" cx="160" cy="122" rx="67" ry="65" fill="none" stroke="url(#ring)" stroke-width="24" stroke-linecap="round" opacity=".8"/><ellipse id="lower-ring" cx="160" cy="254" rx="75" ry="74" fill="none" stroke="url(#ring)" stroke-width="24" stroke-linecap="round" opacity=".8"/>
       <g class="orb"><circle cx="225" cy="80" r="9" fill="#f6c4fb"/><circle cx="223" cy="77" r="2" fill="#fff"/></g>
     </svg>
-    <div class="body-key"><div><strong id="upper">—</strong><span>Upper · arms</span></div><div><strong id="lower">—</strong><span>Lower · legs</span></div></div><p class="note">Relative activity from visible arms and legs, not a score. The rings change with the current 30-second window.</p>
+    <div class="body-key"><div><strong id="upper">—</strong><span data-i18n="upper">Upper · arms</span></div><div><strong id="lower">—</strong><span data-i18n="lower">Lower · legs</span></div></div><p class="note" data-i18n="ringsNote">Relative activity from visible arms and legs, not a score. The rings change with the current 30-second window.</p>
   </section>
   <section class="dashboard" aria-label="Live space and creative guide">
-    <article class="card"><div class="card-head"><div><div class="micro">01 / Space</div><h2>Where you moved</h2></div><span id="calibration" class="info">Waiting</span></div><div class="heat-layout"><div id="heat" class="heat" aria-label="Foot position heatmap"></div><div class="heat-copy">A trace of your movement through the space.<div class="legend"></div><small>Less <span style="float:right">More</span></small></div></div><p class="note" style="margin:12px 0 0;max-width:none">Estimated foot positions; occluded feet are excluded.</p></article>
-    <article class="card"><div class="card-head"><div><div class="micro">02 / Movement</div><h2>How you moved</h2></div><span class="info">Last few seconds</span></div><div id="movement" class="tags"></div><p class="note" style="margin:12px 0 0;max-width:none">Descriptions of the recent movement, not a score.</p></article>
-    <article class="card guide"><div class="guide-content"><div class="guide-label"><div class="micro">03 / Creative guide</div><button id="toggle" class="toggle" type="button" aria-pressed="true">Suggestions on</button></div><div id="guide-title" class="guide-title">Space to explore.</div><div id="guide-desc" class="guide-desc">A movement idea can appear here when tracking is ready.</div><div id="why" class="hidden"><button id="why-toggle" class="toggle" type="button" aria-expanded="false">Why this suggestion?</button><p id="why-text" class="note hidden"></p></div><div id="actions" class="actions hidden"><button class="button" id="accept" type="button">Try this</button><button class="button secondary" id="dismiss" type="button">Not now</button></div><div id="engine" class="info" style="margin-top:12px">LOCAL GUIDE · PROTOTYPE</div></div></article>
+    <article class="card"><div class="card-head"><div><div class="micro" data-i18n="spaceMicro">01 / Space</div><h2 data-i18n="spaceTitle">Where you moved</h2></div><span id="calibration" class="info">Waiting</span></div><div class="heat-layout"><div id="heat" class="heat" aria-label="Foot position heatmap"></div><div class="heat-copy"><span data-i18n="spaceCopy">A trace of your movement through the space.</span><div class="legend"></div><small><span data-i18n="less">Less</span> <span style="float:right" data-i18n="more">More</span></small></div></div><p class="note" style="margin:12px 0 0;max-width:none" data-i18n="feetNote">Estimated foot positions; occluded feet are excluded.</p></article>
+    <article class="card"><div class="card-head"><div><div class="micro" data-i18n="moveMicro">02 / Movement</div><h2 data-i18n="moveTitle">How you moved</h2></div><span class="info" data-i18n="lastSeconds">Last few seconds</span></div><div id="movement" class="tags"></div><p class="note" style="margin:12px 0 0;max-width:none" data-i18n="moveNote">Descriptions of the recent movement, not a score.</p></article>
+    <article class="card guide"><div class="guide-content"><div class="guide-label"><div class="micro" data-i18n="guideMicro">03 / Creative guide</div><button id="toggle" class="toggle" type="button" aria-pressed="true">Suggestions on</button></div><div id="guide-title" class="guide-title">Space to explore.</div><div id="guide-desc" class="guide-desc">A movement idea can appear here when tracking is ready.</div>
+      <div id="answer" class="answer hidden" aria-live="polite"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="track" cx="22" cy="22" r="18" fill="none" stroke-width="5"/><circle id="answer-fill" class="fill" cx="22" cy="22" r="18" fill="none" stroke-width="5" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="113.1"/></svg><span data-i18n="answerHint">Make an O over your head to say yes</span></div>
+      <div id="why" class="hidden"><button id="why-toggle" class="toggle" type="button" aria-expanded="false">Why this suggestion?</button><p id="why-text" class="note hidden"></p></div><div id="actions" class="actions hidden"><button class="button" id="accept" type="button">Try this</button><button class="button secondary" id="dismiss" type="button">Not now</button></div><div id="engine" class="info" style="margin-top:12px">LOCAL GUIDE · PROTOTYPE</div></div></article>
   </section>
 </main>
-<footer class="foot"><span>Video and pose landmarks stay on your phone.<br>Only movement aggregates are shared on your local network.</span><a href="/display/demo">Open demo ↗</a></footer>
+<footer class="foot"><span id="privacy">Video and pose landmarks stay on your phone.<br>Only movement aggregates are shared on your local network.</span><a href="/display/demo" data-i18n="demoLink">Open demo ↗</a></footer>
 </div>
-<script>
-(() => {
-  const $ = id => document.getElementById(id);
-  const isDemo = location.pathname.split('/').pop() === 'demo';
-  const room = isDemo ? 'd8d8d8d8d8d8d8d8' : location.pathname.split('/').pop();
-  const wsBase = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/projection/ws/${room}`;
-  const heat = $('heat'); for (let i=0; i<64; i++) { const cell=document.createElement('div'); cell.className='cell'; heat.appendChild(cell); }
-  let view, publisher, timer, demoTimer, reconnectTimer, activeProposal = null, reasonProposal = null, enabled = true;
-  $('mode').textContent = isDemo ? 'DEMO · SIMULATED' : 'LIVE SPACE';
-  const clear = (message) => {
-    $('status').textContent = message; $('dot').classList.remove('live'); $('calibration').textContent = 'Waiting';
-    $('upper').textContent = $('lower').textContent = '—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74);
-    for (const cell of heat.children) cell.style.background = '#302538';
-    movement(null); activeProposal = null; reasonProposal = null; $('why').classList.add('hidden'); $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); $('actions').classList.add('hidden'); $('nudge').classList.add('hidden'); $('guide-title').textContent='Space to explore.'; $('guide-desc').textContent='A movement idea can appear here when tracking is ready.';
+<div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><small id="notice-sub"></small><div id="notice-bar" class="bar hidden"><i id="notice-fill"></i></div></div>
+<aside id="debug" class="debug closed" aria-label="Debug view">
+  <div id="debug-handle" class="card-head drag-handle" tabindex="0" role="button" aria-label="Move the debug view (drag, or arrow keys; double-click to reset)" title="Drag to move · double-click to reset"><div class="micro">Debug ⠿</div><span class="info">Drag to move · D to close</span></div>
+  <div id="debug-phone" class="hidden" style="margin-top:8px">Video stays on the phone. Check the phone's camera tab.</div>
+  <div id="debug-webcam">
+    <div class="stage" style="margin-top:8px"><video id="video" muted playsinline></video><canvas id="overlay"></canvas></div>
+    <dl id="debug-values"></dl>
+    <div>Input: <button id="use-camera" class="toggle" type="button">Webcam</button> · or a dance video <input id="file" type="file" accept="video/*" style="width:auto"></div>
+    <div style="margin-top:6px">BPM <input id="bpm" type="number" min="40" max="240" placeholder="none"> <span class="info">beat timing without the phone</span></div>
+    <div style="margin-top:6px" class="info">Room: <a id="room-link" target="_blank" rel="noopener"></a></div>
+    <div id="phone-line" class="info" style="margin-top:4px"></div>
+  </div>
+</aside>
+<script type="module">
+const $ = id => document.getElementById(id);
+const ROOM_RE = /^[a-f0-9]{16}$/;
+const pathRoom = location.pathname.split('/').filter(Boolean)[1] ?? null; // /display/<room>: the phone's camera reads
+const isDemo = pathRoom === 'demo';
+const asked = new URLSearchParams(location.search).get('room');
+const webcam = pathRoom === null; // /display: this computer's webcam reads
+const joined = webcam && ROOM_RE.test(asked ?? ''); // /display?room=<phone room>: the webcam joins a phone session
+const room = isDemo ? 'd8d8d8d8d8d8d8d8' : pathRoom ?? (joined ? asked : Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join(''));
+const wsBase = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/projection/ws/${room}`;
+const modeLabel = isDemo ? 'DEMO · SIMULATED' : joined ? 'WEBCAM · PHONE SESSION' : webcam ? 'WEBCAM' : 'LIVE SPACE';
+const heat = $('heat'); for (let i = 0; i < 64; i++) { const cell = document.createElement('div'); cell.className = 'cell'; heat.appendChild(cell); }
+let view, publisher, timer, demoTimer, reconnectTimer, activeProposal = null, proposalKind = null, reasonProposal = null, enabled = true;
+$('mode').textContent = modeLabel;
+// ---- every word on the screen, in English (default) and Korean ----
+const TEXT = {
+  en: {
+    eyebrow: 'Movement in the moment', title: 'Your movement,<br>in shape.', sub: 'An abstract view of your practice.',
+    upper: 'Upper · arms', lower: 'Lower · legs', ringsNote: 'Relative activity from visible arms and legs, not a score. The rings change with the current 30-second window.',
+    spaceMicro: '01 / Space', spaceTitle: 'Where you moved', spaceCopy: 'A trace of your movement through the space.', less: 'Less', more: 'More', feetNote: 'Estimated foot positions; occluded feet are excluded.',
+    moveMicro: '02 / Movement', moveTitle: 'How you moved', lastSeconds: 'Last few seconds', moveNote: 'Descriptions of the recent movement, not a score.', moveEmpty: 'Appears while movement is tracked.',
+    guideMicro: '03 / Creative guide', on: 'Suggestions on', off: 'Suggestions off', nudge: 'Need some help?', answerHint: 'Make an O over your head to say yes', demoLink: 'Open demo ↗',
+    privacyWebcam: 'Video and pose landmarks stay on this computer.<br>Only movement words and numbers are shared on your local network.',
+    privacyPhone: 'Video and pose landmarks stay on your phone.<br>Only movement aggregates are shared on your local network.',
+    yes: 'Yes, please', notNow: 'Not now', tryThis: 'Try this', skip: 'Skip',
+    idle: ['Space to explore.', 'A movement idea can appear here when tracking is ready.'], watching: 'Watching the rhythm of your movement.', keepInView: 'Keep your arms and legs in view to enable movement ideas.',
+    states: { explored: ['You tried it.', 'Nice: {name} joined in.'], unanswered: ['Maybe later.', "Keep dancing. I'll check in again soon."], accepted: ['Give it a try.', 'Keep exploring at your own pace.'], dismissed: ['No problem.', 'We will give you some space.'], unavailable: ['Guide unavailable.', 'Movement tracking is still running.'], paused: ['Suggestions are off.', 'Turn them on whenever you want.'] },
+    help: ['Need some help?', 'Want a movement idea?'],
+    prompts: {
+      arm_l: ['Start with your left arm', 'Try a wider reach, then connect it to your next move.'], arm_r: ['Start with your right arm', 'Try a wider reach, then connect it to your next move.'],
+      leg_l: ['Lead with your left leg', 'Add a small step and explore a new direction.'], leg_r: ['Lead with your right leg', 'Add a small step and explore a new direction.'],
+      low: ['Go low', 'Bring your movement closer to the floor for the next counts.'], high: ['Go high', 'Rise up and reach above your usual height.'],
+      left: ['Explore your left side', 'Travel a few steps to your left and dance there.'], right: ['Explore your right side', 'Travel a few steps to your right and dance there.'],
+    },
+    names: { arm_l: 'left arm', arm_r: 'right arm', leg_l: 'left leg', leg_r: 'right leg', low: 'low height', high: 'high height', left: 'your left side', right: 'your right side' },
+    tags: { speed: 'Speed', size: 'Size', direction: 'Direction', texture: 'Texture', lead: 'Lead', timing: 'Timing', space: 'Space' },
+    parts: { head: 'Head', torso: 'Torso', arm_l: 'Left arm', arm_r: 'Right arm', leg_l: 'Left leg', leg_r: 'Right leg', 'whole body': 'Whole body' },
+    status: { connecting: 'Connecting', waiting: 'Waiting for movement', live: 'Tracking live', sim: 'Simulation running', disconnected: 'Disconnected', invalid: 'Invalid data' },
+    calib: { waiting: 'Waiting', floor: 'Floor calibrated', camera: 'Camera view' },
+    notices: {
+      loading: ['Loading the pose model…', ''], standStill: ['Stand still for 3 seconds', 'Face the camera with your whole body in view.'], stepIn: ['Step into view', 'Stand 2.5–3 m from the camera, whole body in the frame.'],
+      permission: ['Camera permission is needed', 'Open Debug (D) to choose a dance video instead.'], noCamera: ['No camera: choose a dance video', 'Open Debug (D) to choose a dance video instead.'],
+      noModel: ['Could not load the pose model', 'Check the internet connection, then reload.'], taken: ['This phone session already has a camera', 'Close the other display page, then reload this one.'],
+    },
+  },
+  ko: {
+    eyebrow: '지금 이 순간의 움직임', title: '당신의 움직임을,<br>하나의 모양으로.', sub: '연습을 추상적으로 보여 줘요.',
+    upper: '위 · 팔', lower: '아래 · 다리', ringsNote: '보이는 팔과 다리의 상대적인 움직임이에요. 점수가 아니에요. 고리는 최근 30초를 따라 바뀌어요.',
+    spaceMicro: '01 / 공간', spaceTitle: '어디서 움직였나', spaceCopy: '공간 속 움직임의 흔적이에요.', less: '적게', more: '많이', feetNote: '발 위치를 추정한 값이에요. 가려진 발은 빼요.',
+    moveMicro: '02 / 움직임', moveTitle: '어떻게 움직였나', lastSeconds: '최근 몇 초', moveNote: '최근 움직임에 대한 설명이에요. 점수가 아니에요.', moveEmpty: '움직임이 인식되면 나타나요.',
+    guideMicro: '03 / 크리에이티브 가이드', on: '제안 켜짐', off: '제안 꺼짐', nudge: '도움이 필요할까요?', answerHint: '머리 위로 O를 만들면 "네"예요', demoLink: '데모 열기 ↗',
+    privacyWebcam: '영상과 관절 좌표는 이 컴퓨터 밖으로 나가지 않아요.<br>움직임을 나타내는 말과 숫자만 같은 네트워크에 공유돼요.',
+    privacyPhone: '영상과 관절 좌표는 폰 밖으로 나가지 않아요.<br>움직임 집계만 같은 네트워크에 공유돼요.',
+    yes: '네, 좋아요', notNow: '다음에', tryThis: '해 볼게요', skip: '건너뛰기',
+    idle: ['탐색할 공간.', '인식이 준비되면 여기에 움직임 아이디어가 떠요.'], watching: '움직임의 리듬을 보고 있어요.', keepInView: '팔과 다리가 화면에 보이면 아이디어를 드릴 수 있어요.',
+    states: { explored: ['해봤네요!', '좋아요 · {name}'], unanswered: ['다음에 해요.', '계속 춰요. 조금 뒤에 다시 물어볼게요.'], accepted: ['한번 해 보세요.', '편한 속도로 탐색해 보세요.'], dismissed: ['괜찮아요.', '잠시 지켜볼게요.'], unavailable: ['가이드를 쓸 수 없어요.', '움직임 인식은 계속돼요.'], paused: ['제안이 꺼져 있어요.', '원할 때 다시 켜 주세요.'] },
+    help: ['도움이 필요할까요?', '움직임 아이디어를 드릴까요?'],
+    prompts: {
+      arm_l: ['왼팔로 시작해 볼까요?', '더 크게 뻗고, 다음 동작으로 이어 보세요.'], arm_r: ['오른팔로 시작해 볼까요?', '더 크게 뻗고, 다음 동작으로 이어 보세요.'],
+      leg_l: ['왼다리로 이끌어 볼까요?', '작게 한 걸음 내딛고 새로운 방향을 찾아보세요.'], leg_r: ['오른다리로 이끌어 볼까요?', '작게 한 걸음 내딛고 새로운 방향을 찾아보세요.'],
+      low: ['낮게 내려가 볼까요?', '다음 몇 카운트는 바닥 가까이에서 움직여 보세요.'], high: ['높게 올라가 볼까요?', '평소보다 높이 뻗고 올라서 보세요.'],
+      left: ['왼쪽 공간으로 가 볼까요?', '왼쪽으로 몇 걸음 옮겨서 그곳에서 춰 보세요.'], right: ['오른쪽 공간으로 가 볼까요?', '오른쪽으로 몇 걸음 옮겨서 그곳에서 춰 보세요.'],
+    },
+    names: { arm_l: '왼팔', arm_r: '오른팔', leg_l: '왼다리', leg_r: '오른다리', low: '낮은 높이', high: '높은 높이', left: '왼쪽 공간', right: '오른쪽 공간' },
+    tags: { speed: '속도', size: '크기', direction: '방향', texture: '질감', lead: '주도', timing: '박자', space: '공간' },
+    parts: { head: '머리', torso: '몸통', arm_l: '왼팔', arm_r: '오른팔', leg_l: '왼다리', leg_r: '오른다리', 'whole body': '온몸' },
+    status: { connecting: '연결 중', waiting: '움직임을 기다리는 중', live: '인식 중', sim: '시뮬레이션 중', disconnected: '연결 끊김', invalid: '잘못된 데이터' },
+    calib: { waiting: '기다리는 중', floor: '바닥 보정됨', camera: '카메라 화면 기준' },
+    notices: {
+      loading: ['자세 인식 모델을 불러오는 중…', ''], standStill: ['3초 동안 가만히 서 주세요', '카메라를 보고 온몸이 화면에 들어오게 서 주세요.'], stepIn: ['화면 안으로 들어와 주세요', '카메라에서 2.5–3m, 온몸이 화면에 들어오게.'],
+      permission: ['카메라 권한이 필요해요', '디버깅 화면(D)에서 댄스 영상을 대신 고를 수 있어요.'], noCamera: ['카메라가 없어요: 댄스 영상을 골라 주세요', '디버깅 화면(D)에서 댄스 영상을 대신 고를 수 있어요.'],
+      noModel: ['자세 인식 모델을 불러오지 못했어요', '인터넷 연결을 확인하고 새로고침해 주세요.'], taken: ['이 폰 세션에는 이미 카메라가 있어요', '다른 디스플레이 페이지를 닫고 이 페이지를 새로고침해 주세요.'],
+    },
+  },
+};
+let lang = 'en', lastData = null;
+try { if (localStorage.getItem('eight.lang') === 'ko') lang = 'ko'; } catch {}
+const T = () => TEXT[lang];
+
+// ---- the room's view: what every screen shows, and the character's state ----
+const clear = (message) => {
+  $('status').textContent = T().status[message] ?? message; $('dot').classList.remove('live'); $('calibration').textContent = T().calib.waiting; lastData = null;
+  $('upper').textContent = $('lower').textContent = '—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74);
+  for (const cell of heat.children) cell.style.background = '#302538';
+  movement(null); activeProposal = null; proposalKind = null; reasonProposal = null; $('why').classList.add('hidden'); $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); $('actions').classList.add('hidden'); $('nudge').classList.add('hidden'); $('answer').classList.add('hidden'); [$('guide-title').textContent, $('guide-desc').textContent] = T().idle;
+};
+const PART = {head:'Head',torso:'Torso',arm_l:'Left arm',arm_r:'Right arm',leg_l:'Left leg',leg_r:'Right leg','whole body':'Whole body'};
+const WORDS = new Set(['still','slow','medium','fast','small','large','in place','left','right','up','down','side to side','up-down','smooth','sharp','on beat','off beat','mixed',...Object.keys(PART)]);
+function movement(m, parts, space) {
+  const box = $('movement'); box.textContent = '';
+  const tags = T().tags, rows = m ? [[tags.speed,m.speed],[tags.size,m.size],[tags.direction,m.direction],[tags.texture,m.texture],[tags.lead,PART[m.lead] && T().parts[m.lead]],[tags.timing,m.timing]] : [];
+  for (const [name, word] of rows) { if (typeof word !== 'string' || !(WORDS.has(word) || Object.values(T().parts).includes(word))) continue; const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, word); box.appendChild(tag); }
+  const line = (name, text) => { const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, text); box.appendChild(tag); };
+  const ok = v => typeof v === 'string' && /^[a-z -]{1,16}$/.test(v);
+  if (parts && typeof parts === 'object') for (const [name, p] of Object.entries(parts)) { if (PART[name] && p && ok(p.kind) && p.kind !== 'hold') line(T().parts[name], [p.kind, p.size, p.texture, p.timing].filter(ok).join(' · ')); }
+  if (space && typeof space === 'object' && [space.zone, space.level, space.depth].every(ok)) line(T().tags.space, `${space.zone} · ${space.level} · ${space.depth}` + (Number.isFinite(space.width) ? ` · ${space.width} wide` : ''));
+  if (!box.children.length) { const tag = document.createElement('span'); tag.className = 'info'; tag.textContent = T().moveEmpty; box.appendChild(tag); }
+}
+const send = obj => { if (view && view.readyState === WebSocket.OPEN) view.send(JSON.stringify(obj)); };
+const answer = choice => { if (activeProposal) send({ type: 'agent_response', proposalId: activeProposal, choice }); };
+$('why-toggle').onclick = () => { const open = !$('why-text').classList.toggle('hidden'); $('why-toggle').setAttribute('aria-expanded', String(open)); };
+$('toggle').onclick = () => { if (!view || view.readyState !== WebSocket.OPEN) return; send({type:'agent_enabled',enabled:!enabled}); };
+$('accept').onclick = () => answer('accept');
+$('dismiss').onclick = () => answer('dismiss');
+let lastAgent = null;
+function render(data) {
+  clearTimeout(timer);
+  if (!data.active || !Array.isArray(data.cells) || data.cells.length !== 64) { clear('waiting'); return; }
+  lastData = data;
+  $('status').textContent = isDemo ? T().status.sim : T().status.live; $('dot').classList.add('live');
+  $('mode').textContent = data.missionTitle && !isDemo ? `MISSION · ${data.missionTitle}` : modeLabel;
+  $('calibration').textContent = data.calibrated ? T().calib.floor : T().calib.camera;
+  data.cells.forEach((v,i) => { const amount=Math.max(0,Math.min(1,Number(v)||0)); heat.children[i].style.background = `rgba(234,100,229,${.08+.9*Math.sqrt(amount)})`; });
+  movement(data.movement, data.parts, data.space);
+  if (data.body) {
+    const u=Math.max(0,Math.min(1,data.body.upper)),l=Math.max(0,Math.min(1,data.body.lower));
+    $('upper').textContent=Math.round(u*100)+'%'; $('lower').textContent=Math.round(l*100)+'%';
+    $('upper-ring').setAttribute('rx',Math.round(52+32*u)); $('upper-ring').setAttribute('ry',Math.round(52+27*u));
+    $('lower-ring').setAttribute('rx',Math.round(52+38*l)); $('lower-ring').setAttribute('ry',Math.round(52+34*l));
+  } else { $('upper').textContent=$('lower').textContent='—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74); }
+  const agent=data.agent; lastAgent = agent ?? lastAgent; const proposal=agent?.proposal; activeProposal=proposal?.id || null; proposalKind = proposal?.kind ?? null;
+  if (agent) { enabled=agent.state!=='paused'; $('toggle').textContent=enabled?T().on:T().off; $('toggle').setAttribute('aria-pressed',String(enabled)); }
+  if (reasonProposal !== proposal?.id) { reasonProposal = proposal?.id; $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); }
+  $('why').classList.toggle('hidden', proposal?.kind !== 'suggestion' || !proposal?.reason);
+  $('why-toggle').textContent = lang === 'ko' ? '이 제안의 근거' : 'Why this suggestion?';
+  $('why-text').textContent = proposal?.reason || '';
+  $('actions').classList.toggle('hidden',!proposal);
+  $('nudge').classList.toggle('hidden',proposal?.kind!=='help');
+  $('answer').classList.toggle('hidden', !(webcam && proposal?.kind === 'help'));
+  $('accept').textContent=proposal?.kind==='help'?T().yes:T().tryThis; $('dismiss').textContent=proposal?.kind==='help'?T().notNow:T().skip;
+  const words = T(), state = words.states[agent?.state];
+  // The character's words come from this page's table (by kind and target); the server's own words are the fallback.
+  if (proposal) [$('guide-title').textContent, $('guide-desc').textContent] = (proposal.kind === 'help' ? words.help : words.prompts[proposal.target]) ?? [proposal.title, proposal.detail];
+  else if (state) { $('guide-title').textContent = state[0]; $('guide-desc').textContent = state[1].replace('{name}', words.names[agent.target] ?? ''); }
+  else { $('guide-title').textContent = words.idle[0]; $('guide-desc').textContent = data.body ? words.watching : words.keepInView; }
+  timer=setTimeout(()=>clear('waiting'),3000);
+}
+function startDemo() {
+  if (publisher && (publisher.readyState === WebSocket.OPEN || publisher.readyState === WebSocket.CONNECTING)) return;
+  publisher = new WebSocket(wsBase+'/publish');
+  publisher.onopen=()=>{ const start=Date.now(); demoTimer=setInterval(()=>{
+    const t=(Date.now()-start)/1000, x=3.5+2.1*Math.sin(t*.26), y=3.5+2*Math.cos(t*.19);
+    const cells=Array.from({length:64},(_,i)=>{ const dx=i%8-x,dy=Math.floor(i/8)-y; return Math.round(Math.exp(-(dx*dx+dy*dy)/3)*1000)/1000; });
+    const upper=.64+.12*Math.sin(t*.15); publisher.send(JSON.stringify({active:true,calibrated:true,cells,context:{position:t,loop:null,saveRevision:0},body:{upper,lower:1-upper,underused:['leg_l']},movement:[{speed:'slow',size:'large',direction:'in place',texture:'smooth',lead:'arm_r',timing:'on beat'},{speed:'medium',size:'medium',direction:'side to side',texture:'sharp',lead:'whole body',timing:'mixed'},{speed:'still',size:'small',direction:'in place',texture:null,lead:null,timing:null}][Math.floor(t/6)%3]}));
+  },250); };
+  publisher.onclose=()=>{ clearInterval(demoTimer); };
+}
+function connect(){
+  view=new WebSocket(wsBase+'/view'); view.onopen=()=>{ $('status').textContent=T().status.waiting; if(isDemo) startDemo(); };
+  view.onmessage=e=>{try{render(JSON.parse(e.data));}catch{clear('invalid');}};
+  view.onclose=()=>{clearTimeout(timer);clear('disconnected');reconnectTimer=setTimeout(connect,2000);};
+}
+addEventListener('pagehide',()=>{clearTimeout(reconnectTimer);clearInterval(demoTimer);publisher?.close();view?.close();});
+connect();
+
+// ---- debug view: D or the button; remembered per browser ----
+let debugOpen = false;
+const setDebug = on => {
+  debugOpen = on; $('debug').classList.toggle('closed', !on); $('debug-toggle').setAttribute('aria-pressed', String(on));
+  try { localStorage.setItem('eight.debug', on ? '1' : '0'); } catch {}
+};
+try { setDebug(localStorage.getItem('eight.debug') === '1'); } catch { setDebug(false); }
+$('debug-toggle').onclick = () => setDebug(!debugOpen);
+
+// The debug view can be dragged by its header (or moved with the arrow keys); double-click puts it back in the corner.
+// The spot is remembered per browser and kept inside the window.
+{
+  const panel = $('debug'), handle = $('debug-handle');
+  let drag = null, pos = null;
+  try { const saved = JSON.parse(localStorage.getItem('eight.debug.pos') ?? 'null'); if (Number.isFinite(saved?.x) && Number.isFinite(saved?.y)) pos = saved; } catch {}
+  const place = () => {
+    if (!pos) { Object.assign(panel.style, { left: '', top: '', right: '', bottom: '', maxHeight: '' }); return; }
+    const w = panel.offsetWidth;
+    pos = { x: Math.max(8, Math.min(pos.x, innerWidth - w - 8)), y: Math.max(8, Math.min(pos.y, innerHeight - 128)) };
+    // the panel scrolls inside whatever room is left below its top edge, so nothing ends up off screen
+    Object.assign(panel.style, { left: `${pos.x}px`, top: `${pos.y}px`, right: 'auto', bottom: 'auto', maxHeight: `${innerHeight - pos.y - 8}px` });
   };
-  const PART = {head:'Head',torso:'Torso',arm_l:'Left arm',arm_r:'Right arm',leg_l:'Left leg',leg_r:'Right leg','whole body':'Whole body'};
-  const WORDS = new Set(['still','slow','medium','fast','small','large','in place','left','right','up','down','side to side','up-down','smooth','sharp','on beat','off beat','mixed',...Object.keys(PART)]);
-  function movement(m, parts, space) {
-    const box = $('movement'); box.textContent = '';
-    const rows = m ? [['Speed',m.speed],['Size',m.size],['Direction',m.direction],['Texture',m.texture],['Lead',PART[m.lead]],['Timing',m.timing]] : [];
-    for (const [name, word] of rows) { if (typeof word !== 'string' || !(WORDS.has(word) || Object.values(PART).includes(word))) continue; const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, word); box.appendChild(tag); }
-    const line = (name, text) => { const tag = document.createElement('span'); tag.className = 'tag'; const key = document.createElement('small'); key.textContent = name; tag.append(key, text); box.appendChild(tag); };
-    const ok = v => typeof v === 'string' && /^[a-z -]{1,16}$/.test(v);
-    if (parts && typeof parts === 'object') for (const [name, p] of Object.entries(parts)) { if (PART[name] && p && ok(p.kind) && p.kind !== 'hold') line(PART[name], [p.kind, p.size, p.texture, p.timing].filter(ok).join(' · ')); }
-    if (space && typeof space === 'object' && [space.zone, space.level, space.depth].every(ok)) line('Space', `${space.zone} · ${space.level} · ${space.depth}` + (Number.isFinite(space.width) ? ` · ${space.width} wide` : ''));
-    if (!box.children.length) { const tag = document.createElement('span'); tag.className = 'info'; tag.textContent = 'Appears while movement is tracked.'; box.appendChild(tag); }
+  const save = () => { try { localStorage.setItem('eight.debug.pos', JSON.stringify(pos)); } catch {} };
+  handle.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const r = panel.getBoundingClientRect();
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    handle.setPointerCapture(e.pointerId); panel.classList.add('dragging');
+  });
+  handle.addEventListener('pointermove', e => { if (drag) { pos = { x: e.clientX - drag.dx, y: e.clientY - drag.dy }; place(); } });
+  const drop = () => { if (!drag) return; drag = null; panel.classList.remove('dragging'); save(); };
+  handle.addEventListener('pointerup', drop);
+  handle.addEventListener('pointercancel', drop);
+  handle.addEventListener('dblclick', () => { pos = null; place(); save(); });
+  handle.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 80 : 20, move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!move) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = panel.getBoundingClientRect();
+    pos = { x: r.left + move[0], y: r.top + move[1] }; place(); save();
+  });
+  addEventListener('resize', place);
+  place();
+}
+$('debug-phone').classList.toggle('hidden', webcam || isDemo);
+$('debug-webcam').classList.toggle('hidden', !webcam);
+addEventListener('keydown', e => {
+  if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'd') setDebug(!debugOpen);
+  else if (k === 'y') answer('accept');
+  else if (k === 'n') answer('dismiss');
+});
+
+let sticky = false, noticeKey = null, noticeProgress = null; // sticky: a camera problem or a taken session stays until the input changes
+const notice = (key, progress = null) => {
+  noticeKey = key; noticeProgress = progress;
+  const [text, sub] = key ? T().notices[key] : ['', ''];
+  $('notice').classList.toggle('hidden', !key); $('notice-text').textContent = text; $('notice-sub').textContent = sub;
+  $('notice-bar').classList.toggle('hidden', progress === null); if (progress !== null) $('notice-fill').style.width = `${Math.round(100 * progress)}%`;
+};
+
+// ---- language: EN (default) / KO, remembered per browser ----
+function applyLang() {
+  document.documentElement.lang = lang;
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = T()[el.dataset.i18n];
+  for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = T()[el.dataset.i18nHtml];
+  $('privacy').innerHTML = webcam ? T().privacyWebcam : T().privacyPhone;
+  $('lang').textContent = lang === 'en' ? 'EN / KO' : 'KO / EN'; $('lang').setAttribute('aria-pressed', String(lang === 'ko'));
+  $('toggle').textContent = enabled ? T().on : T().off;
+  if (lastData) render(lastData); else [$('guide-title').textContent, $('guide-desc').textContent] = T().idle;
+  if (noticeKey) notice(noticeKey, noticeProgress);
+}
+$('lang').onclick = () => { lang = lang === 'en' ? 'ko' : 'en'; try { localStorage.setItem('eight.lang', lang); } catch {} applyLang(); };
+applyLang();
+
+if (webcam) startWebcam();
+
+// ---- this computer's webcam reads the dancer (the same tracking code as the phone, bundled) ----
+async function startWebcam() {
+  const { DisplayTracker, webPoseEvent, SKELETON_EDGES } = await import('/static/tracking.js');
+  const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
+  const tracker = new DisplayTracker(), video = $('video'), overlay = $('overlay');
+  $('room-link').href = `/display/${room}`; $('room-link').textContent = `${location.origin}/display/${room}`;
+
+  // the page's reading goes to the room: publish (alone) or camera (in a phone session)
+  let sender = null, frame = null, phone = null, phoneAt = 0;
+  const isAsking = () => proposalKind === 'help';
+  const openSender = () => {
+    sender = new WebSocket(`${wsBase}/${joined ? 'camera' : 'publish'}`);
+    sender.onmessage = e => { try { const p = JSON.parse(e.data).phone; if (p) { phone = p; phoneAt = performance.now(); } } catch {} };
+    sender.onclose = e => {
+      if (e.code === 1008 && joined) { sticky = true; notice('taken'); return; }
+      setTimeout(openSender, 2000);
+    };
+  };
+  openSender();
+  setInterval(() => { if (sender?.readyState === WebSocket.OPEN && frame) sender.send(JSON.stringify(frame.packet)); }, 250);
+  if (!joined) setInterval(async () => { // phone sessions on this server without a camera: one click joins
+    try {
+      const { rooms } = await (await fetch('/movement/rooms')).json(), box = $('phone-line');
+      box.textContent = rooms.length ? 'Phone session found: ' : '';
+      for (const r of rooms) { if (!ROOM_RE.test(r)) continue; const a = document.createElement('a'); a.href = `/display?room=${r}`; a.textContent = `join ${r.slice(0, 4)}… as its camera `; box.appendChild(a); }
+    } catch {}
+  }, 3000);
+
+  let beat = null, beatFrom = 0;
+  $('bpm').oninput = e => { const bpm = Number(e.target.value); beat = bpm >= 40 && bpm <= 240 ? 60 / bpm : null; beatFrom = performance.now(); };
+  const musicNow = tMs => (phone?.playing && phone.position !== null ? phone.position + (tMs - phoneAt) / 1000 : beat ? (tMs - beatFrom) / 1000 : null);
+  const mirror = on => { for (const el of [video, overlay]) el.style.transform = on ? 'scaleX(-1)' : 'none'; };
+
+  let camera = false, delegate = '—';
+  const startCamera = async () => {
+    try {
+      video.removeAttribute('src'); video.loop = false;
+      video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+      await video.play(); camera = true; mirror(true); tracker.reset(); sticky = false; notice(null);
+    } catch (e) {
+      camera = false; sticky = true;
+      notice(e?.name === 'NotAllowedError' ? 'permission' : 'noCamera');
+    }
+  };
+  $('use-camera').onclick = () => void startCamera();
+  $('file').onchange = e => { // a dance video instead of the webcam: same model, same reading; the file stays in this page
+    const file = e.target.files?.[0];
+    if (!file) return;
+    video.srcObject?.getTracks().forEach(t => t.stop());
+    video.srcObject = null; video.src = URL.createObjectURL(file); video.loop = true; mirror(false);
+    tracker.reset(); sticky = false; notice(null); void video.play();
+  };
+
+  let landmarker;
+  try {
+    notice('loading');
+    const { FilesetResolver, PoseLandmarker } = await import(`${VISION}/vision_bundle.mjs`);
+    const fileset = await FilesetResolver.forVisionTasks(`${VISION}/wasm`);
+    const create = d => PoseLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: MODEL, delegate: d }, runningMode: 'VIDEO', numPoses: 1 });
+    try { landmarker = await create('GPU'); delegate = 'GPU'; } catch { landmarker = await create('CPU'); delegate = 'CPU'; }
+    notice(null);
+  } catch {
+    notice('noModel');
+    return;
   }
-  const send = obj => { if (view && view.readyState === WebSocket.OPEN) view.send(JSON.stringify(obj)); };
-  $('why-toggle').onclick = () => { const open = $('why-text').classList.toggle('hidden') === false; $('why-toggle').setAttribute('aria-expanded', String(open)); };
-  $('toggle').onclick = () => { if (!view || view.readyState !== WebSocket.OPEN) return; send({type:'agent_enabled',enabled:!enabled}); };
-  for (const [id, choice] of [['accept','accept'],['dismiss','dismiss']]) $(id).onclick = () => { if (activeProposal) send({type:'agent_response',proposalId:activeProposal,choice}); };
-  function render(data) {
-    clearTimeout(timer);
-    if (!data.active || !Array.isArray(data.cells) || data.cells.length !== 64) { clear('Waiting for movement'); return; }
-    $('status').textContent = isDemo ? 'Simulation running' : 'Tracking live'; $('dot').classList.add('live');
-    $('mode').textContent = isDemo ? 'DEMO · SIMULATED' : data.missionTitle ? `MISSION · ${data.missionTitle}` : 'LIVE SPACE';
-    $('calibration').textContent = data.calibrated ? 'Floor calibrated' : 'Camera view';
-    data.cells.forEach((v,i) => { const amount=Math.max(0,Math.min(1,Number(v)||0)); heat.children[i].style.background = `rgba(234,100,229,${.08+.9*Math.sqrt(amount)})`; });
-    movement(data.movement, data.parts, data.space);
-    if (data.body) {
-      const u=Math.max(0,Math.min(1,data.body.upper)),l=Math.max(0,Math.min(1,data.body.lower));
-      $('upper').textContent=Math.round(u*100)+'%'; $('lower').textContent=Math.round(l*100)+'%';
-      $('upper-ring').setAttribute('rx',Math.round(52+32*u)); $('upper-ring').setAttribute('ry',Math.round(52+27*u));
-      $('lower-ring').setAttribute('rx',Math.round(52+38*l)); $('lower-ring').setAttribute('ry',Math.round(52+34*l));
-    } else { $('upper').textContent=$('lower').textContent='—'; $('upper-ring').setAttribute('rx',67); $('upper-ring').setAttribute('ry',65); $('lower-ring').setAttribute('rx',75); $('lower-ring').setAttribute('ry',74); }
-    const agent=data.agent; const proposal=agent?.proposal; activeProposal=proposal?.id || null;
-    if (agent) { enabled=agent.state!=='paused'; $('toggle').textContent=enabled?'Suggestions on':'Suggestions off'; $('toggle').setAttribute('aria-pressed',String(enabled)); }
-    if (reasonProposal !== proposal?.id) { reasonProposal = proposal?.id; $('why-text').classList.add('hidden'); $('why-toggle').setAttribute('aria-expanded', 'false'); }
-    $('why').classList.toggle('hidden', proposal?.kind !== 'suggestion' || !proposal?.reason);
-    $('why-text').textContent = proposal?.reason || '';
-    $('actions').classList.toggle('hidden',!proposal);
-    $('nudge').classList.toggle('hidden',proposal?.kind!=='help');
-    $('accept').textContent=proposal?.kind==='help'?'Yes, please':'Try this'; $('dismiss').textContent=proposal?.kind==='help'?'Not now':'Skip';
-    if (proposal) { $('guide-title').textContent=proposal.title; $('guide-desc').textContent=proposal.detail; }
-    else if (agent?.state==='accepted') { $('guide-title').textContent='Give it a try.'; $('guide-desc').textContent='Keep exploring at your own pace.'; }
-    else if (agent?.state==='dismissed') { $('guide-title').textContent='No problem.'; $('guide-desc').textContent='We will give you some space.'; }
-    else if (agent?.state==='unavailable') { $('guide-title').textContent='Guide unavailable.'; $('guide-desc').textContent='Movement tracking is still running.'; }
-    else if (agent?.state==='paused') { $('guide-title').textContent='Suggestions are off.'; $('guide-desc').textContent='Turn them on whenever you want.'; }
-    else { $('guide-title').textContent='Space to explore.'; $('guide-desc').textContent=data.body?'Watching the rhythm of your movement.':'Keep your arms and legs in view to enable movement ideas.'; }
-    timer=setTimeout(()=>clear('Waiting for movement'),3000);
+  await startCamera();
+
+  let last = -1, seq = 0, frames = 0, fps = 0, fpsAt = performance.now();
+  const loop = () => {
+    requestAnimationFrame(loop);
+    if (video.readyState < 2 || !video.videoWidth || video.currentTime === last) return;
+    if (video.currentTime < last) tracker.reset(); // the video looped: start over, calibrate again
+    last = video.currentTime;
+    const tMs = performance.now(), res = landmarker.detectForVideo(video, tMs), done = performance.now();
+    const event = webPoseEvent({ tMs, seq: ++seq, nowMs: done, wallMs: Date.now(), latencyMs: done - tMs, aspect: video.videoWidth / video.videoHeight, image: res.landmarks?.[0], world: res.worldLandmarks?.[0] });
+    frame = tracker.step(event, { musicT: musicNow(tMs), beatS: beat, playing: joined ? (phone ? phone.playing : true) : true, asking: isAsking() });
+    if (frame.answer.yes) answer('accept');
+    $('answer-fill').setAttribute('stroke-dashoffset', String(113.1 * (1 - frame.answer.progress)));
+    if (!sticky) {
+      const s = frame.status?.state;
+      if (s === 'calibrating' && frame.pose) notice('standStill', frame.status.progress);
+      else if (!frame.pose && s !== 'tracking') notice('stepIn');
+      else notice(null);
+    }
+    frames++;
+    if (tMs - fpsAt >= 1000) { fps = Math.round(frames * 1000 / (tMs - fpsAt)); frames = 0; fpsAt = tMs; }
+    if (debugOpen) drawDebug(frame);
+  };
+  loop();
+
+  function drawDebug(f) {
+    overlay.width = video.videoWidth; overlay.height = video.videoHeight;
+    const g = overlay.getContext('2d'); g.clearRect(0, 0, overlay.width, overlay.height);
+    if (f.pose) {
+      g.lineWidth = Math.max(3, overlay.width / 160); g.lineCap = 'round';
+      for (const [a, b] of SKELETON_EDGES) {
+        const p = f.pose.lm[a], q = f.pose.lm[b]; if (!p || !q) continue;
+        g.strokeStyle = p[2] < 0.5 || q[2] < 0.5 ? '#f078eb40' : '#f078eb';
+        g.beginPath(); g.moveTo(p[0] * overlay.width, p[1] * overlay.height); g.lineTo(q[0] * overlay.width, q[1] * overlay.height); g.stroke();
+      }
+    }
+    const seg = f.usage.recent?.segments, lv = f.usage.recent?.level, parts = f.label?.parts ?? {}, a = lastAgent, t = a?.timers;
+    const pct = x => `${Math.round(100 * x)}%`;
+    const rows = [
+      ['Input', `${camera ? 'webcam' : video.src ? 'video file' : 'none'} · ${fps} fps · ${delegate}`],
+      ['Tracker', `${f.status?.state ?? '—'}${f.status?.state === 'calibrating' ? ` ${pct(f.status.progress)}` : ''}`],
+      ['Parts (30 s)', seg ? Object.entries(seg).map(([k, v]) => `${k} ${pct(v)}`).join(' · ') : '—'],
+      ['Unknown', Object.entries(parts).filter(([, p]) => p.kind === null).map(([k]) => `${k} (unknown)`).join(' · ') || 'none'],
+      ['Height', lv ? `low ${pct(lv.low)} · mid ${pct(lv.mid)} · high ${pct(lv.high)}` : '—'],
+      ['Lacking', f.lacking.join(' · ') || 'none'],
+      ['Tried (8 ct)', (f.packet.explored ?? []).join(' · ') || 'none'],
+      ['Guide', a ? `${a.state}${a.proposal ? ` · ${a.proposal.kind} ${a.proposal.target}` : ''}` : '—'],
+      ['Timers', t ? `warm-up ${t.warmup}s · cooldown ${t.cooldown}s${t.answer !== null ? ` · answer ${t.answer}s` : ''}` : '—'],
+      ['Holding', t ? Object.entries(t.holding).map(([k, v]) => `${k} ${v}s`).join(' · ') || 'none' : '—'],
+      ['O answer', f.answer.progress > 0 ? pct(f.answer.progress) : isAsking() ? 'waiting for an O' : '—'],
+    ];
+    const dl = $('debug-values'); dl.textContent = '';
+    for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
   }
-  function startDemo() {
-    if (publisher && (publisher.readyState === WebSocket.OPEN || publisher.readyState === WebSocket.CONNECTING)) return;
-    publisher = new WebSocket(wsBase+'/publish');
-    publisher.onopen=()=>{ const start=Date.now(); demoTimer=setInterval(()=>{
-      const t=(Date.now()-start)/1000, x=3.5+2.1*Math.sin(t*.26), y=3.5+2*Math.cos(t*.19);
-      const cells=Array.from({length:64},(_,i)=>{ const dx=i%8-x,dy=Math.floor(i/8)-y; return Math.round(Math.exp(-(dx*dx+dy*dy)/3)*1000)/1000; });
-      const upper=.64+.12*Math.sin(t*.15); publisher.send(JSON.stringify({active:true,calibrated:true,cells,context:{position:t,loop:null,saveRevision:0},body:{upper,lower:1-upper,underused:['leg_l']},movement:[{speed:'slow',size:'large',direction:'in place',texture:'smooth',lead:'arm_r',timing:'on beat'},{speed:'medium',size:'medium',direction:'side to side',texture:'sharp',lead:'whole body',timing:'mixed'},{speed:'still',size:'small',direction:'in place',texture:null,lead:null,timing:null}][Math.floor(t/6)%3]}));
-    },250); };
-    publisher.onclose=()=>{ clearInterval(demoTimer); };
-  }
-  function connect(){
-    view=new WebSocket(wsBase+'/view'); view.onopen=()=>{ $('status').textContent='Waiting for movement'; if(isDemo) startDemo(); };
-    view.onmessage=e=>{try{render(JSON.parse(e.data));}catch{clear('Invalid data');}};
-    view.onclose=()=>{clearTimeout(timer);clear('Disconnected');reconnectTimer=setTimeout(connect,2000);};
-  }
-  addEventListener('pagehide',()=>{clearTimeout(reconnectTimer);clearInterval(demoTimer);publisher?.close();view?.close();});
-  connect();
-})();
+}
 </script>
 </body>
 </html>

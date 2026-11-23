@@ -8,7 +8,7 @@ import re
 import time
 from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from .display_agent import MovementGuide, Observation, TARGETS
 
 router = APIRouter()
@@ -30,7 +30,7 @@ MOVEMENT = {
 
 
 def _movement(value):
-    """Movement labels from app/src/movement/classify.ts: exactly these keys, each one of its known words."""
+    """Movement labels from app/src/tracking/labels.ts: exactly these keys, each one of its known words."""
     if not isinstance(value, dict) or set(value) != set(MOVEMENT):
         return None
     if any(not (value[k] is None or isinstance(value[k], str)) or value[k] not in words for k, words in MOVEMENT.items()):
@@ -38,8 +38,8 @@ def _movement(value):
     return {k: value[k] for k in MOVEMENT}
 
 
-PART = {
-    'kind': ('hold', 'reach', 'circle', 'swing', 'shake', 'shift', 'travel', 'jump', 'drop'), 'speed': MOVEMENT['speed'], 'size': MOVEMENT['size'],
+PART = {  # None in kind / speed / size: the part was not seen enough to say (labels.ts), never "still"
+    'kind': ('hold', 'reach', 'circle', 'swing', 'shake', 'shift', 'travel', 'jump', 'drop', None), 'speed': (*MOVEMENT['speed'], None), 'size': (*MOVEMENT['size'], None),
     'texture': MOVEMENT['texture'], 'toward': ('up', 'side', 'down', None), 'timing': MOVEMENT['timing'],
 }
 PART_NAMES = ('arm_l', 'arm_r', 'leg_l', 'leg_r', 'torso')
@@ -51,7 +51,7 @@ def _words(value, allowed):
 
 
 def _parts(value):
-    """What each body part did (movement.js): the five parts, each with exactly the known keys and words."""
+    """What each body part did (app/src/tracking/labels.ts): the five parts, each with exactly the known keys and words."""
     if not isinstance(value, dict) or set(value) != set(PART_NAMES):
         return None
     if any(not isinstance(p, dict) or set(p) != set(PART) or not _words(p, PART) for p in value.values()):
@@ -60,7 +60,7 @@ def _parts(value):
 
 
 def _space(value):
-    """Where the dancer is against the calibrated spot (movement.js): known words, offsets in torso lengths."""
+    """Where the dancer is against the calibrated spot (app/src/tracking/labels.ts): known words, offsets in torso lengths."""
     numbers = ('x', 'y', 'width')
     if not isinstance(value, dict) or set(value) != set(SPACE) | set(numbers) or not _words(value, SPACE):
         return None
@@ -86,6 +86,13 @@ def _usage_history(value):
     return dict(value)
 
 
+def _targets(value):
+    """A list of the guide's targets (what the dancer just tried); anything else is dropped."""
+    if not isinstance(value, list) or len(value) > len(TARGETS) or any(not isinstance(x, str) or x not in TARGETS for x in value):
+        return None
+    return list(dict.fromkeys(value))
+
+
 @router.get('/projection/{room}', response_class=HTMLResponse)
 def display(room: str):
     if not ROOM.fullmatch(room):
@@ -100,15 +107,28 @@ def creative_display(room: str):
     return HTMLResponse((Path(__file__).parent / 'display.html').read_text(encoding='utf-8'))
 
 
-@router.get('/movement', response_class=HTMLResponse)
-def movement_camera():
-    """Webcam page: reads the dancer's movement in the browser and publishes the labels to a room."""
-    return HTMLResponse((Path(__file__).parent / 'movement.html').read_text(encoding='utf-8'))
+@router.get('/display', response_class=HTMLResponse)
+def webcam_display():
+    """The display reading the dancer with this computer's webcam; ?room=<phone room> joins a phone session as its camera."""
+    return HTMLResponse((Path(__file__).parent / 'display.html').read_text(encoding='utf-8'))
 
 
-@router.get('/movement.js')
-def movement_module():
-    return Response((Path(__file__).parent / 'movement.js').read_text(encoding='utf-8'), media_type='text/javascript')
+@router.get('/movement')
+def movement_camera(room: str | None = None):
+    """The old webcam page is now the display itself."""
+    return RedirectResponse(f'/display?room={room}' if room and ROOM.fullmatch(room) else '/display', status_code=307)
+
+
+@router.get('/movement/rooms')
+def movement_rooms():
+    """Phone sessions a webcam page can join: rooms with a publisher and no camera yet."""
+    return {'rooms': [room for room, s in rooms.items() if s['publisher'] is not None and s['camera'] is None and room != DEMO_ROOM]}
+
+
+@router.get('/static/tracking.js')
+def tracking_module():
+    """The tracking code bundled for the display page (app/scripts/build-display.cjs)."""
+    return Response((Path(__file__).parent / 'static' / 'tracking.js').read_text(encoding='utf-8'), media_type='text/javascript')
 
 
 async def broadcast(state: dict, packet: str):
@@ -117,17 +137,19 @@ async def broadcast(state: dict, packet: str):
 
 @router.websocket('/projection/ws/{room}/{role}')
 async def relay(ws: WebSocket, room: str, role: str):
-    if not ROOM.fullmatch(room) or role not in ('publish', 'view'):
+    if not ROOM.fullmatch(room) or role not in ('publish', 'view', 'camera'):
         await ws.close(code=1008)
         return
     await ws.accept()
-    state = rooms.setdefault(room, {'publisher': None, 'viewers': set(), 'last': None, 'last_at': None, 'guide': None})
-    if role == 'publish' and state['publisher'] is not None:
+    state = rooms.setdefault(room, {'publisher': None, 'viewers': set(), 'last': None, 'last_at': None, 'guide': None, 'camera': None, 'cam': None})
+    if (role == 'publish' and state['publisher'] is not None) or (role == 'camera' and state['camera'] is not None):
         await ws.close(code=1008)
         return
     if role == 'publish':
         state['publisher'] = ws
         state['guide'] = MovementGuide(warmup=5, persistence=2, cooldown=20, no_save_after=7) if room == DEMO_ROOM else MovementGuide()
+    elif role == 'camera':  # a webcam display page (/display?room=) reading the dancer for the phone's session
+        state['camera'] = ws
     else:
         state['viewers'].add(ws)
         if state['last'] is not None and state['last_at'] is not None and time.monotonic() - state['last_at'] < 3:
@@ -140,6 +162,14 @@ async def relay(ws: WebSocket, room: str, role: str):
             try:
                 data = json.loads(raw)
                 if not isinstance(data, dict):
+                    continue
+                if role == 'camera':  # kept until the phone's next packet carries it to the viewers
+                    cam = {'at': time.monotonic(), 'answering': data.get('answering') is True}
+                    for key, check in (('movement', _movement), ('parts', _parts), ('space', _space), ('body', _body), ('explored', _targets)):
+                        checked = check(data.get(key))
+                        if checked is not None:
+                            cam[key] = checked
+                    state['cam'] = cam if 'movement' in cam or 'body' in cam else None
                     continue
                 if role == 'view' or data.get('type') in ('agent_response', 'agent_enabled'):
                     if state['publisher'] is None or state['last'] is None or state['guide'] is None or state['last_at'] is None or time.monotonic() - state['last_at'] >= 3:
@@ -171,6 +201,14 @@ async def relay(ws: WebSocket, room: str, role: str):
                 active = data.get('active') is True
                 recording = data.get('recording') is True
                 body = _body(data.get('body')) if active else None
+                explored = (_targets(data.get('explored')) or []) if active else []
+                answering = active and data.get('answering') is True
+                cam = state['cam'] if state['cam'] and now - state['cam']['at'] < 3 else None
+                if cam:  # the room's webcam sees the dancer: its reading stands in for the phone camera's
+                    active, body = True, cam.get('body') or body
+                    data = {**data, **{k: cam[k] for k in ('movement', 'parts', 'space') if k in cam}}
+                    explored, answering = cam.get('explored', []), cam['answering']
+                webcam = cam is not None or data.get('source') == 'webcam'  # the guide's rules follow who reads the dancer
                 context = data.get('context') if isinstance(data.get('context'), dict) else {}
                 pos = context.get('position')
                 pos = float(pos) if type(pos) in (int, float) and math.isfinite(pos) and 0 <= pos <= 86400 else None
@@ -197,12 +235,17 @@ async def relay(ws: WebSocket, room: str, role: str):
                         packet[key] = checked
                 if recording:
                     packet['recording'] = True
+                if state['camera'] is not None:  # the phone's music clock, for the webcam page's beat timing
+                    note = json.dumps({'phone': {'position': pos, 'playing': context.get('playing') is True, 'recording': recording}})
+                    await asyncio.gather(state['camera'].send_text(note), return_exceptions=True)
                 agent = guide.observe(Observation(active=active and body is not None,
                                                    upper=body['upper'] if body else None,
                                                    lower=body['lower'] if body else None,
                                                    underused=tuple(body['underused']) if body else (), position=pos, loop_start=loop['start'] if loop else None, loop_end=loop['end'] if loop else None, save_revision=rev, playing=context.get('playing') if type(context.get('playing')) is bool else None,
                                                    project_usage=_usage_history(context.get('projectUsage')),
-                                                   overall_usage=_usage_history(context.get('overallUsage'))), now)
+                                                   overall_usage=_usage_history(context.get('overallUsage')),
+                                                   webcam=webcam, explored=tuple(explored), answering=answering,
+                                                   movement=movement, parts=packet.get('parts'), space=packet.get('space')), now)
                 if body is not None:
                     packet['agent'] = agent
                 previous_agent = json.loads(state['last']).get('agent') if state['last'] else None
@@ -221,7 +264,10 @@ async def relay(ws: WebSocket, room: str, role: str):
             state['last_at'] = None
             state['guide'] = None
             await broadcast(state, '{"active":false,"cells":[]}')
+        elif role == 'camera':
+            state['camera'] = None
+            state['cam'] = None
         else:
             state['viewers'].discard(ws)
-        if state['publisher'] is None and not state['viewers']:
+        if state['publisher'] is None and state['camera'] is None and not state['viewers']:
             rooms.pop(room, None)
