@@ -35,6 +35,9 @@ export class StemPlayer {
   private loop: LoopRange = null;
   private disposed = false;
   private playGeneration = 0;
+  private transportTimer: ReturnType<typeof setInterval> | null = null;
+  private driftChecks = 0;
+  private lastDriftCheck = 0;
   private waveforms: Record<string, number[]> = {};
   private envelopes: Record<string, number[]> = {};
   playing = false;
@@ -56,12 +59,11 @@ export class StemPlayer {
   async setPlaybackRate(rate: number) {
     if (!Number.isFinite(rate) || rate < 0.5 || rate > 1.5) throw new Error('Playback speed must be between 0.5× and 1.5×.');
     if (rate === this.speed) return;
-    const position = this.playing ? this.position : this.pausedAt;
+    const position = this.position;
     this.speed = rate;
-    for (const source of Object.values(this.fileSources)) source.playbackRate = rate;
-    // A pending grouped seek will start all files with the new rate. Otherwise
-    // restart the whole group at one position instead of changing active nodes serially.
-    if (this.playing && !this.filePreparing) await this.play(position);
+    // A rate change must invalidate a pending seek too. Never change the rate
+    // of live decoders one by one: pause the group first in play().
+    if (this.playing || this.filePreparing) await this.play(position);
   }
 
   /** stem 파일들을 받아 디코드. onProgress(완료 수, 전체 수) */
@@ -202,20 +204,15 @@ export class StemPlayer {
 
   /** 현재 재생 위치(초) */
   get position(): number {
-    if (!this.playing) return this.pausedAt;
     if (this.filePreparing) return this.startOffset;
+    if (!this.playing) return this.pausedAt;
     let p = this.startOffset + Math.max(0, this.ctx.currentTime - this.startCtxTime) * this.speed;
     if (this.loop && p >= this.loop.end) {
       const len = this.loop.end - this.loop.start;
       p = this.loop.start + ((p - this.loop.start) % len);
-      if (this.fileMode) {
-        // All decoders must seek as one group; otherwise a slower decoder falls behind.
-        this.startOffset = p;
-        void this.play(p);
-        return p;
-      }
     }
     if (p >= this.duration) {
+      if (this.fileMode) return this.duration;
       this.stopSources();
       this.playing = false;
       this.pausedAt = 0;
@@ -237,6 +234,7 @@ export class StemPlayer {
       this.filePreparing = true; this.startOffset = offset;
       // Pausing before seeking prevents the old playback from running while decoder threads catch up.
       for (const source of sources) source.pause();
+      for (const source of sources) source.playbackRate = this.speed;
       for (const source of sources) source.seekToTime(offset);
       await new Promise<void>(resolve => setTimeout(resolve, 300));
       if (this.disposed || generation !== this.playGeneration) return;
@@ -244,6 +242,8 @@ export class StemPlayer {
       for (const source of sources) source.start(startAt);
       this.filePreparing = false;
       this.startCtxTime = startAt; this.startOffset = offset; this.playing = true;
+      this.driftChecks = 0;
+      this.watchFileTransport();
       return;
     }
     this.stopSources();
@@ -280,18 +280,48 @@ export class StemPlayer {
   }
 
   pause() {
+    // Invalidate even an initial buffer play that has not reached playing=true.
     this.playGeneration++;
     if (!this.playing && !this.filePreparing) return;
-    this.pausedAt = this.filePreparing ? this.startOffset : this.position;
+    const absolute = this.startOffset + Math.max(0, this.ctx.currentTime - this.startCtxTime) * this.speed;
+    this.pausedAt = this.filePreparing ? this.startOffset : this.loop && absolute >= this.loop.end
+      ? this.loop.start + ((absolute - this.loop.start) % (this.loop.end - this.loop.start)) : Math.min(absolute, this.duration);
+    if (this.transportTimer) clearInterval(this.transportTimer);
+    this.transportTimer = null;
     this.filePreparing = false;
     if (this.fileMode) for (const source of Object.values(this.fileSources)) source.pause();
     this.stopSources();
     this.playing = false;
   }
 
+  private watchFileTransport() {
+    if (this.transportTimer) return;
+    this.transportTimer = setInterval(() => {
+      if (!this.playing || this.filePreparing || this.disposed) return;
+      const absolute = this.startOffset + Math.max(0, this.ctx.currentTime - this.startCtxTime) * this.speed;
+      if (this.loop && absolute >= this.loop.end) {
+        // Position reads have no restart side effects. Only this transport loop
+        // owns repeat restarts; paused playback cannot be resurrected by a read.
+        void this.play(this.loop.start).catch(() => this.pause());
+      } else if (absolute >= this.duration) {
+        this.pause(); this.pausedAt = 0; this.onEnded?.();
+      } else if (this.ctx.currentTime - this.startCtxTime > 1 && this.ctx.currentTime - this.lastDriftCheck > .25) {
+        this.lastDriftCheck = this.ctx.currentTime;
+        const times = Object.values(this.fileSources).map(s => s.currentTime).filter(t => Number.isFinite(t));
+        const spread = times.length > 1 ? Math.max(...times) - Math.min(...times) : 0;
+        this.driftChecks = spread > .12 ? this.driftChecks + 1 : 0;
+        if (this.driftChecks >= 3) {
+          // Native decoder under-runs can diverge even with a common scheduled
+          // start. Rejoin the entire group, never seek one audible layer alone.
+          void this.play(this.position).catch(() => this.pause());
+        }
+      }
+    }, 25);
+  }
+
   async seek(t: number) {
     const clamped = Math.max(0, Math.min(t, this.duration));
-    if (this.playing) await this.play(clamped);
+    if (this.playing || this.filePreparing) await this.play(clamped);
     else this.pausedAt = clamped;
   }
 
@@ -334,6 +364,8 @@ export class StemPlayer {
   async dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    if (this.transportTimer) clearInterval(this.transportTimer);
+    this.transportTimer = null;
     this.playGeneration++;
     this.stopSources();
     for (const output of this.fileOutputs) { try { output.disconnect(); } catch {} }

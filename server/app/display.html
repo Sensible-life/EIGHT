@@ -98,6 +98,8 @@ body.idle{cursor:none}
 /* controls: appear when the mouse moves, hide after a moment */
 .bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:7;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;max-width:calc(100vw - 32px);padding:6px;border-radius:24px;background:#211c3ce6;border:1px solid var(--line);box-shadow:0 10px 30px #0007;font-size:13px;transition:opacity .4s}
 body.idle .bar{opacity:0;pointer-events:none}
+/* the webcam is recording for the phone: always shown, even when the controls hide */
+.rec{position:fixed;top:14px;left:16px;z-index:9;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:700;color:#ff687e;border:1px solid #ff687e;background:#451c2cee;max-width:calc(100vw - 32px)}
 .status{display:flex;align-items:center;gap:7px;padding:0 10px;color:var(--muted);white-space:nowrap}.sdot{width:8px;height:8px;border-radius:50%;background:#8f88b5}.sdot.live{background:#b9f0c4;box-shadow:0 0 10px #b9f0c4}
 .chip{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--line);background:#ffffff0d;color:var(--ink);border-radius:999px;padding:7px 13px;text-decoration:none}.chip[aria-pressed=true]{background:#b7a6f02e;border-color:#b7a6f066}.chip.primary{background:#e9e4ff;color:#221c3d;border-color:transparent}
 .chip:focus-visible,.drag-handle:focus-visible{outline:2px solid #cbb9ff;outline-offset:2px}
@@ -143,6 +145,7 @@ body.idle .bar{opacity:0;pointer-events:none}
   </div>
   <div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><small id="notice-sub"></small><div id="notice-bar" class="nbar hidden"><i id="notice-fill"></i></div></div>
 </div>
+<div id="record-indicator" class="rec hidden" role="status">● REC</div>
 <nav id="bar" class="bar" aria-label="Display controls">
   <span class="status"><span id="dot" class="sdot"></span><span id="status">Connecting</span><span id="mode"></span></span>
   <button id="yes" class="chip primary hidden" type="button">Yes</button><button id="no" class="chip hidden" type="button">Not now</button>
@@ -210,7 +213,7 @@ const TEXT = {
     status: { connecting: 'Connecting', waiting: 'Waiting for movement', live: 'Tracking live', sim: 'Simulation running', disconnected: 'Disconnected', invalid: 'Invalid data' },
     notices: {
       loading: ['Loading the pose model…', ''], standStill: ['Stand still for 3 seconds', 'Face the camera with your whole body in view.'], stepIn: ['Step into view', 'Stand 2.5–3 m from the camera, whole body in the frame.'],
-      permission: ['Camera permission is needed', 'Open Debug (D) to choose a dance video instead.'], noCamera: ['No camera: choose a dance video', 'Open Debug (D) to choose a dance video instead.'],
+      permission: ['Camera permission is needed', 'Allow camera access in your browser and system settings, then retry in Debug (D).'], noCamera: ['Camera unavailable', 'Check the camera and permissions, then retry in Debug (D).'], insecureCamera: ['Open this page using localhost', 'Replace the IP address in the address bar with localhost, keeping the rest of the address.'],
       noModel: ['Could not load the pose model', 'Check the internet connection, then reload.'], taken: ['This phone session already has a camera', 'Close the other display page, then reload this one.'],
     },
   },
@@ -239,7 +242,7 @@ const TEXT = {
     status: { connecting: '연결 중', waiting: '움직임을 기다리는 중', live: '인식 중', sim: '시뮬레이션 중', disconnected: '연결 끊김', invalid: '잘못된 데이터' },
     notices: {
       loading: ['자세 인식 모델을 불러오는 중…', ''], standStill: ['3초 동안 가만히 서 주세요', '카메라를 보고 온몸이 화면에 들어오게 서 주세요.'], stepIn: ['화면 안으로 들어와 주세요', '카메라에서 2.5–3m, 온몸이 화면에 들어오게.'],
-      permission: ['카메라 권한이 필요해요', '디버그 화면(D)에서 댄스 영상을 대신 고를 수 있어요.'], noCamera: ['카메라가 없어요: 댄스 영상을 골라 주세요', '디버그 화면(D)에서 댄스 영상을 대신 고를 수 있어요.'],
+      permission: ['카메라 권한이 필요해요', '브라우저와 시스템 설정에서 카메라를 허용한 뒤 디버그(D)에서 다시 시도하세요.'], noCamera: ['카메라를 사용할 수 없어요', '카메라와 권한을 확인하고 디버그(D)에서 다시 시도하세요.'], insecureCamera: ['localhost 주소로 열어주세요', '주소창에서 IP 주소를 localhost로 바꾸고 나머지 주소는 그대로 두세요.'],
       noModel: ['자세 인식 모델을 불러오지 못했어요', '인터넷 연결을 확인하고 새로고침해 주세요.'], taken: ['이 폰 세션에는 이미 카메라가 있어요', '다른 디스플레이 페이지를 닫고 이 페이지를 새로고침해 주세요.'],
     },
   },
@@ -585,11 +588,56 @@ async function startReader() {
 
   // the page's reading goes to the room: publish (alone) or camera (in a phone session)
   let sender = null, frame = null, phone = null, phoneAt = 0;
+  // Recording for the phone (in a phone session): the phone sends start / stop through the room, this page records the
+  // webcam and uploads the take; the server converts it and the phone can save it.
+  let recorder = null, chunks = [], recordingTake = null, captureState = 'Ready', captureStarted = 0, recordingLimit = null;
+  const updateCapture = state => {
+    captureState = state;
+    const badge = $('record-indicator');
+    badge.classList.toggle('hidden', state === 'Ready');
+    badge.textContent = state;
+  };
+  setInterval(() => {
+    if (recorder?.state === 'recording') updateCapture(`● REC · ${Math.floor((performance.now() - captureStarted) / 1000)}s`);
+  }, 250);
+  const recordEvent = (state, message) => {
+    if (state === 'started') { captureStarted = performance.now(); updateCapture('● REC · 0s'); }
+    else if (state === 'stopped') updateCapture('Transferring video…');
+    else if (state === 'saved') updateCapture('Recording ready');
+    else if (state === 'error') updateCapture(`Recording error: ${message ?? 'Unknown error'}`);
+    if (sender?.readyState === WebSocket.OPEN) sender.send(JSON.stringify({ type: 'record_event', state, take: recordingTake, message }));
+  };
+  const recordCommand = async p => {
+    try {
+      if (p.action === 'start') {
+        recordingTake = p.take;
+        if (!camera || !video.srcObject || recorder?.state === 'recording') throw new Error('Webcam is not ready.');
+        chunks = [];
+        const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+        recorder = new MediaRecorder(video.srcObject, mimeType ? { mimeType } : undefined);
+        recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+        recorder.onerror = () => recordEvent('error', 'Webcam recording failed.');
+        recorder.onstart = () => { recordEvent('started'); recordingLimit = setTimeout(() => { if (recorder?.state === 'recording') recorder.stop(); }, 60000); };
+        recorder.onstop = async () => {
+          if (recordingLimit) clearTimeout(recordingLimit);
+          try {
+            recordEvent('stopped');
+            const response = await fetch(`/projection/recordings/${room}/${recordingTake}`, { method: 'POST', body: new Blob(chunks, { type: recorder.mimeType }) });
+            if (!response.ok) throw new Error('Could not transfer webcam recording.');
+            recordEvent('saved');
+          } catch (e) { recordEvent('error', e.message); }
+          finally { recorder = null; chunks = []; }
+        };
+        recorder.start(1000);
+      } else if (p.action === 'stop' && recorder?.state === 'recording' && p.take === recordingTake) recorder.stop();
+    } catch (e) { recordEvent('error', e.message); }
+  };
   const isAsking = () => proposalKind === 'help';
   const openSender = () => {
     sender = new WebSocket(`${wsBase}/${joined ? 'camera' : 'publish'}${isDemo ? '?demo=1' : ''}`); // a demo room asks sooner
-    sender.onmessage = e => { try { const p = JSON.parse(e.data).phone; if (p) { phone = p; phoneAt = performance.now(); } } catch {} };
+    sender.onmessage = e => { try { const data = JSON.parse(e.data), p = data.phone; if (p) { phone = p; phoneAt = performance.now(); } if (data.type === 'record_command') void recordCommand(data); } catch {} };
     sender.onclose = e => {
+      if (recorder?.state === 'recording') { recorder.stop(); updateCapture('Recording interrupted · connection lost'); }
       if (e.code === 1008 && joined) { sticky = true; notice('taken'); return; }
       setTimeout(openSender, 2000);
     };
@@ -652,6 +700,7 @@ async function startReader() {
 
   const startCamera = async () => {
     try {
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { camera = false; sticky = true; notice('insecureCamera'); return; } // a camera needs localhost or https
       video.removeAttribute('src'); video.loop = false;
       video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
       await video.play(); camera = true; mirror(true); tracker.reset(); sticky = false; notice(null);
@@ -711,6 +760,7 @@ async function startReader() {
     }
     const seg = f.usage.recent?.segments, lv = f.usage.recent?.level, parts = f.label?.parts ?? {};
     fill($('debug-values'), [
+      ['Recording', captureState],
       ['Input', inputLine()],
       ['Tracker', `${f.status?.state ?? '—'}${f.status?.state === 'calibrating' ? ` ${pct(f.status.progress)}` : ''}`],
       ['Parts (30 s)', seg ? Object.entries(seg).map(([k, v]) => `${k} ${pct(v)}`).join(' · ') : '—'],

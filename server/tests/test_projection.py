@@ -3,6 +3,27 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 class ProjectionTest(unittest.TestCase):
+    def test_webcam_record_commands_and_responses(self):
+        room = 'abcdef0123456789'
+        with TestClient(app) as client:
+            with client.websocket_connect(f'/projection/ws/{room}/publish') as phone:
+                phone.send_json({'type': 'record_command', 'action': 'start'})
+                self.assertEqual(phone.receive_json()['state'], 'error')
+                with client.websocket_connect(f'/projection/ws/{room}/camera') as camera:
+                    phone.send_json({'type': 'record_command', 'action': 'start'})
+                    cmd = camera.receive_json()
+                    self.assertEqual(cmd['action'], 'start')
+                    take = cmd['take']
+                    camera.send_json({'type': 'record_event', 'state': 'started', 'take': take})
+                    self.assertEqual(phone.receive_json()['state'], 'started')
+                    phone.send_json({'type': 'record_command', 'action': 'stop'})
+                    self.assertEqual(camera.receive_json()['take'], take)
+                    camera.send_json({'type': 'record_event', 'state': 'stopped', 'take': take})
+                    self.assertEqual(phone.receive_json()['state'], 'stopped')
+                    camera.send_json({'type': 'record_event', 'state': 'saved', 'take': take})
+                    self.assertEqual(phone.receive_json()['url'], f'/projection/recordings/{room}/{take}')
+                    self.assertEqual(client.get(f'/projection/recordings/{room}/bad').status_code, 404)
+
     def test_relay_validated_aggregate_and_inactive_state(self):
         room = '1234567890abcdef'
         with TestClient(app) as client:

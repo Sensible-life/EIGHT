@@ -29,7 +29,7 @@ The display reads the dancer itself with the same tracking code as the phone (`a
 | Address | Who reads the dancer | Notes |
 |---|---|---|
 | `/display` | this computer's webcam | a new room on every load; no phone needed |
-| `/display?room=<phone room>` | this computer's webcam, inside a phone session | the phone gives the music clock and recording; the debug view lists phone sessions to join |
+| `/display?room=<phone room>` | this computer's webcam, inside a phone session | the phone gives the music clock and recording, and can start and stop a webcam recording (the page shows "● REC"; the server converts the take to mp4 for the phone to save); the debug view lists phone sessions to join |
 | `/display/<room>` | the phone's camera | as before; video stays on the phone |
 
 `/movement` (the old webcam page) redirects to `/display`. The page asks to stand still for 3 seconds (calibration). The screen itself stays clean: the 8, and the character when it has something to say. The 8's colors move with the dancer: each limb has a corner (arms on top, legs below, the dancer's left on the left), pink when that limb did a lot of the movement in the last 30 seconds and blue when it barely moved (`body.limbs`, each limb's share; an even 25 % is the middle color). A limb not seen enough stays the middle color, never blue. Controls (suggestions on/off, labels, debug, EN/KO, demo, and yes/no while the character asks) sit in a bar that shows when the mouse moves and hides with the cursor.

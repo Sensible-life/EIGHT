@@ -28,7 +28,7 @@ import { DEFAULT_CONFIG } from '../tracking/config';
 import { LiveTrackingStore } from '../tracking/store';
 import { planFor } from '../tracking/windows';
 
-const TABS = [['mixer', "Mixer"], ['camera', "Camera"]] as const;
+const TABS = [['mixer', "Mixer"], ['camera', "Webcam"]] as const;
 const perfNowMs = () => performance.now();
 
 type Props = { projectId: string; sessionId: string; server: string; job: Job; onBack: () => void; initialSnapshot?: PlaybackSnapshot; missionTitle?: string; onSnapshot?: (value: PlaybackSnapshot) => void; onFinish?: (value: PlaybackSnapshot) => void; onSaveVideo?: (uri: string, start: number, end: number, mix: Mix, videoOffset: number, videoRate: number) => Promise<void>; onSaveMotif?: (value: Pick<Motif, 'start' | 'end' | 'eightIndex' | 'body' | 'level' | 'mix'>) => void };
@@ -55,6 +55,10 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
   const [showAnalysis, setShowAnalysis] = useState(false), [reloading, setReloading] = useState(0);
   const [scrubbing, setScrubbing] = useState(false), [analysisNotice, setAnalysisNotice] = useState('');
   const [transportBusy, setTransportBusy] = useState(false);
+  const transportLock = useRef(false);
+  const [pointA, setPointA] = useState<number | null>(null);
+  const [loopNotice, setLoopNotice] = useState('');
+  const [capturePhase, setCapturePhase] = useState<'idle' | 'starting' | 'recording' | 'processing' | 'review'>('idle');
   const [saveRevision, setSaveRevision] = useState(0);
   const [recordingVideo, setRecordingVideo] = useState(false), [videoNotice, setVideoNotice] = useState('');
   const [recordCommand, setRecordCommand] = useState(0);
@@ -63,6 +67,10 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
   const [savingVideo, setSavingVideo] = useState(false);
   const videoStart = useRef<number | null>(null), videoLast = useRef(0);
   const videoStartedAt = useRef(0), videoOffset = useRef(0);
+  const videoStopped = useRef(false);
+  const boundaryStop = useRef(false);
+  const [recordElapsed, setRecordElapsed] = useState(0);
+  useEffect(() => { if (capturePhase !== 'recording') return; const timer = setInterval(() => setRecordElapsed(Math.max(0, Math.floor((Date.now() - videoStartedAt.current) / 1000))), 250); return () => clearInterval(timer); }, [capturePhase]);
   const [tab, setTab] = useState<'mixer' | 'camera'>('mixer');
   // One tracking session per practice session; it outlives tab switches.
   const [tracking] = useState(() => {
@@ -120,7 +128,7 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
       const p = player.current;
       if (!p) return;
       const time = p.position;
-      if (videoStart.current !== null && time >= videoStart.current) videoLast.current = time;
+      if (!videoStopped.current && videoStart.current !== null && time >= videoStart.current) videoLast.current = time;
       if (composition && !switchingRange.current && crossedLoop(lastPosition.current, time, loopRange, composition.ranges[composition.index])) {
         const next = (composition.index + 1) % composition.ranges.length, range = composition.ranges[next];
         switchingRange.current = true;
@@ -128,7 +136,7 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
       } else lastPosition.current = time;
       setPos(time);
       setLevels(Object.fromEntries(p.stems.map(stem => [stem, p.levelAt(stem, time)])));
-    }, 100);
+    }, 250);
     return () => clearInterval(interval);
   }, [playing, scrubbing, composition, loopRange]);
   const appliedGains = useRef<{ player: StemPlayer | null; values: Record<string, number> }>({ player: null, values: {} });
@@ -174,14 +182,19 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
     });
     return () => subscription.remove();
   }, [onSnapshot, tracking]);
+  useEffect(() => {
+    if (capturePhase !== 'recording' || !loopRange) return;
+    const timer = setInterval(() => { const at = player.current?.position ?? 0; if (videoStart.current !== null && at < videoLast.current - .2) { boundaryStop.current = true; videoLast.current = loopRange.end; setRecordCommand(value => value + 1); clearInterval(timer); } }, 50);
+    return () => clearInterval(timer);
+  }, [capturePhase, loopRange]);
   const patch = (stem: string, changes: Partial<Mix[string]>) => setMix(value => ({ ...value, [stem]: { ...value[stem], ...changes } }));
   const perform = async (action: (p: StemPlayer) => Promise<void> | void) => {
     const p = player.current;
-    if (!p || transportBusy) return;
-    setTransportBusy(true);
+    if (!p || transportLock.current) return;
+    transportLock.current = true; setTransportBusy(true);
     try { await action(p); setPlaying(p.playing); setPos(p.position); }
     catch (e) { setError(displayMessage(e)); }
-    finally { setTransportBusy(false); }
+    finally { transportLock.current = false; setTransportBusy(false); }
   };
   const seek = (time: number) => { lastPosition.current = null; return perform(p => p.seek(time)); };
   // [춤 시작] plays only when stopped: StemPlayer.play() while playing would jump back to the paused position.
@@ -247,19 +260,20 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
         {!!missionTitle && <Text style={[s.watchTitle, { marginBottom: 10 }]}>Mission · {missionTitle}</Text>}
         <View style={s.tabs}>{TABS.map(([key, title]) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} disabled={recordingVideo} onPress={() => setTab(key)} style={[s.tab, tab === key && s.tabOn]}><Text style={[s.tabText, tab === key && s.tabTextOn]}>{title}</Text></Pressable>)}</View>
         {tab === 'camera' && <CameraMixer mix={mix} master={master} onLayer={patch} onMaster={setMaster} />}
-        {tab === 'camera' && <CameraTab projectId={projectId} sessionId={sessionId} store={tracking} playing={playing} loop={loopRange} saveRevision={saveRevision} missionTitle={missionTitle} onPlay={startPlayback} server={server} onSave={() => saveMotif(true)} saved={savedMotif} canRecord={!!onSaveVideo && !loopRange && !draft} recordCommand={recordCommand} onAgent={setDisplayProposal} agentChoice={agentChoice} onVideo={event => {
-          if (event.state === 'pending') { setRecordingVideo(true); setVideoNotice(''); }
-          else if (event.state === 'started') { tracking.beginTake(); videoStartedAt.current = Date.now(); videoOffset.current = 0; videoStart.current = player.current?.playing ? player.current.position : null; videoLast.current = videoStart.current ?? 0; }
-          else if (event.state === 'error') { tracking.finishTake(false); videoStart.current = null; videoStartedAt.current = 0; setRecordingVideo(false); setVideoNotice(displayMessage(event.value)); }
-          else { tracking.endTakeCapture(); const start = videoStart.current, current = player.current?.position ?? videoLast.current; const end = Math.min(duration, current > (start ?? 0) ? current : videoLast.current); videoStart.current = null; videoStartedAt.current = 0;
-            if (start === null || end <= start || !onSaveVideo) { tracking.finishTake(false); try { discardTemporaryVideo(event.value); } catch {} setRecordingVideo(false); setVideoNotice("No music segment was recorded. Play the track and record again."); }
-            else { draftRef.current = event.value; setDraft({ uri: event.value, start, end, mix, videoOffset: videoOffset.current, videoRate: playbackRate }); setVideoNotice('Review the recording before saving.'); }
+        {<View style={tab === 'camera' ? undefined : s.hidden}><CameraTab projectId={projectId} sessionId={sessionId} store={tracking} playing={playing} loop={loopRange} saveRevision={saveRevision} missionTitle={missionTitle} onPlay={startPlayback} server={server} onSave={() => saveMotif(true)} saved={savedMotif} canRecord={!!onSaveVideo && !draft && capturePhase === 'idle'} recordCommand={recordCommand} recording={capturePhase === 'recording'} phase={capturePhase} onRecord={() => setRecordCommand(value => value + 1)} onAgent={setDisplayProposal} agentChoice={agentChoice} onVideo={event => {
+          if (event.state === 'pending') { setCapturePhase('starting'); setRecordingVideo(true); setVideoNotice(''); }
+          else if (event.state === 'started') { setCapturePhase('recording'); boundaryStop.current = false; setRecordElapsed(0); videoStopped.current = false; tracking.beginTake(); videoStartedAt.current = Date.now(); videoOffset.current = 0; videoStart.current = player.current?.playing ? player.current.position : null; videoLast.current = videoStart.current ?? 0; }
+          else if (event.state === 'stopped') { setCapturePhase('processing'); const at = player.current?.position ?? videoLast.current; videoLast.current = boundaryStop.current ? loopRange?.end ?? videoLast.current : at >= (videoStart.current ?? 0) ? at : loopRange?.end ?? videoLast.current; videoStopped.current = true; }
+          else if (event.state === 'error') { tracking.finishTake(false); videoStart.current = null; videoStartedAt.current = 0; setRecordingVideo(false); setCapturePhase('idle'); setVideoNotice(displayMessage(event.value)); }
+          else { tracking.endTakeCapture(); const start = videoStart.current, current = videoLast.current; const end = Math.min(duration, current > (start ?? 0) ? current : videoLast.current); videoStart.current = null; videoStartedAt.current = 0;
+            if (start === null || end <= start || !onSaveVideo) { tracking.finishTake(false); try { discardTemporaryVideo(event.value); } catch {} setRecordingVideo(false); setCapturePhase('idle'); setVideoNotice("No music segment was recorded. Play the track and record again."); }
+            else { setCapturePhase('review'); draftRef.current = event.value; setDraft({ uri: event.value, start, end, mix, videoOffset: videoOffset.current, videoRate: playbackRate }); setVideoNotice('Review the recording before saving.'); }
           }
-        }} />}
+        }} /></View>}
         {displayProposal && <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 14, marginTop: 12, gap: 8 }}><Text style={s.watchTitle}>{displayProposal.title}</Text><Text style={s.small}>{displayProposal.detail}</Text>{displayProposal.kind === 'suggestion' && !!displayProposal.reason && <><Pressable accessibilityRole="button" accessibilityState={{ expanded: showReason }} onPress={() => setReasonId(showReason ? null : displayProposal.id)}><Text style={s.resetText}>{showReason ? 'Hide reason' : 'Why this suggestion?'}</Text></Pressable>{showReason && <Text style={s.small}>{displayProposal.reason}</Text>}</>}<View style={{ flexDirection: 'row', gap: 8 }}><Pressable accessibilityRole="button" style={s.reset} onPress={() => resolveSuggestion(displayProposal.id, true)}><Text style={s.resetText}>{displayProposal.kind === 'help' ? 'Yes, please' : 'Try it'}</Text></Pressable><Pressable accessibilityRole="button" style={s.reset} onPress={() => resolveSuggestion(displayProposal.id, false)}><Text style={s.resetText}>Not now</Text></Pressable></View></View>}
         {draft && <View style={{ gap: 10, marginTop: 14 }}><Text style={s.section}>Review recording</Text><VideoPreview uri={draft.uri} /><View style={{ flexDirection: 'row', gap: 10 }}>
-          <Pressable accessibilityRole="button" disabled={savingVideo} style={s.reset} onPress={() => { tracking.finishTake(false); try { discardTemporaryVideo(draft.uri); } catch {} draftRef.current = null; setDraft(null); setRecordingVideo(false); setVideoNotice('Recording discarded.'); }}><Text style={s.resetText}>Discard</Text></Pressable>
-          <Pressable accessibilityRole="button" disabled={savingVideo} style={s.primary} onPress={() => { if (!onSaveVideo) return; setSavingVideo(true); void onSaveVideo(draft.uri, draft.start, draft.end, draft.mix, draft.videoOffset, draft.videoRate).then(() => { tracking.finishTake(true); draftRef.current = null; setDraft(null); setRecordingVideo(false); setSaveRevision(value => value + 1); setVideoNotice('Movement video saved to your workspace.'); }).catch(e => setVideoNotice(`Could not save video · ${displayMessage(e)}`)).finally(() => setSavingVideo(false)); }}><Text style={s.primaryText}>{savingVideo ? 'Saving…' : 'Save video'}</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={savingVideo} style={s.reset} onPress={() => { tracking.finishTake(false); try { discardTemporaryVideo(draft.uri); } catch {} draftRef.current = null; setDraft(null); setRecordingVideo(false); setCapturePhase('idle'); setVideoNotice('Recording discarded.'); }}><Text style={s.resetText}>Discard</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={savingVideo} style={s.primary} onPress={() => { if (!onSaveVideo) return; setSavingVideo(true); void onSaveVideo(draft.uri, draft.start, draft.end, draft.mix, draft.videoOffset, draft.videoRate).then(() => { tracking.finishTake(true); draftRef.current = null; setDraft(null); setRecordingVideo(false); setCapturePhase('idle'); setSaveRevision(value => value + 1); setVideoNotice('Movement video saved to your workspace.'); }).catch(e => setVideoNotice(`Could not save video · ${displayMessage(e)}`)).finally(() => setSavingVideo(false)); }}><Text style={s.primaryText}>{savingVideo ? 'Saving…' : 'Save video'}</Text></Pressable>
         </View></View>}
         {!!videoNotice && <Text style={s.sub}>{videoNotice}</Text>}
         {/* The mixer stays mounted (watch haptics keep running) and is only hidden on the camera tab. */}
@@ -275,7 +289,7 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
         <View style={s.master}><View style={s.masterHead}><Text style={s.masterLabel}>Master volume</Text><Text style={s.masterValue}>{Math.round(master * 100)}%</Text></View><Slider accessibilityLabel={"Master volume"} style={s.masterSlider} minimumValue={0} maximumValue={1} step={0.01} value={master} onValueChange={setMaster} minimumTrackTintColor={C.text} maximumTrackTintColor={C.line} thumbTintColor={C.text} /></View>
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: showWatch }} onPress={() => setShowWatch(!showWatch)} style={s.watchToggle}><View><Text style={s.watchTitle}>Watch controls</Text><Text style={s.small}>Layer controls · beat haptics</Text></View><Text style={s.sub}>{showWatch ? "Collapse −" : "View +"}</Text></Pressable>
         <View style={showWatch ? undefined : s.hidden}>
-        {loadedPlayer && <WatchMixerCard mix={mix} master={master} suggestion={displayProposal ?? suggestion} notifySuggestion={displayProposal?.kind === 'help'} recordAvailable={tab === 'camera' && !draft && !!onSaveVideo && !loopRange} recording={recordingVideo} onRecord={() => setRecordCommand(value => value + 1)} onSuggestion={resolveSuggestion} onCommands={commands => { setMix(previous => applyWatchMixerCommands(previous, commands)); setMaster(previous => applyWatchMasterCommands(previous, commands)); }} />}
+        {loadedPlayer && <WatchMixerCard mix={mix} master={master} suggestion={displayProposal ?? suggestion} notifySuggestion={displayProposal?.kind === 'help'} recordAvailable={!draft && !!onSaveVideo && (capturePhase === 'idle' || capturePhase === 'recording')} recording={capturePhase === 'recording'} onRecord={() => setRecordCommand(value => value + 1)} onSuggestion={resolveSuggestion} onCommands={commands => { setMix(previous => applyWatchMixerCommands(previous, commands)); setMaster(previous => applyWatchMasterCommands(previous, commands)); }} />}
         {loadedPlayer && <WatchHapticsCard player={loadedPlayer} playing={playing} rate={playbackRate} loopKey={JSON.stringify(loopRange)} transportBusy={transportBusy} />}
         </View>
         {onSaveMotif && <Pressable accessibilityRole="button" onPress={() => saveMotif(false)} style={s.reset}><Text style={s.resetText}>{savedMotif ? "Saved ✓" : "Save this 8-count"}</Text></Pressable>}
@@ -292,13 +306,21 @@ export default function PlayerScreen({ projectId, sessionId, server, job, onBack
         {onFinish && <Pressable accessibilityRole="button" disabled={recordingVideo} onPress={() => { void perform(async p => { await p.pause(); onFinish(withTracking(tracking, { ...latest.current, position: p.position, listened: listened.current, layerSeconds: { ...layerSeconds.current } })); }); }} style={[s.primary, { marginTop: 24, alignItems: 'center' }]}><Text style={s.primaryText}>End session and save</Text></Pressable>}
       </ScrollView>
       <View style={s.dock}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}><Text style={s.time}>Speed</Text>{[0.5, 0.75, 1, 1.25, 1.5].map(rate => <Pressable accessibilityRole="button" accessibilityState={{ selected: playbackRate === rate, disabled: recordingVideo }} disabled={recordingVideo} key={rate} onPress={() => { setPlaybackRate(rate); void player.current?.setPlaybackRate(rate).catch(e => setError(displayMessage(e))); }} style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 10, backgroundColor: playbackRate === rate ? C.cardHi : 'transparent', opacity: recordingVideo ? 0.5 : 1 }}><Text style={{ color: playbackRate === rate ? C.accent : C.sub, fontSize: 11 }}>{rate}×</Text></Pressable>)}</View>
+        {capturePhase !== 'idle' && <Text accessibilityLiveRegion="polite" style={{ color: capturePhase === 'recording' ? '#F05065' : C.sub, fontSize: 12, marginBottom: 8 }}>{capturePhase === 'recording' ? `● REC · ${fmtTime(recordElapsed)} · Webcam` : capturePhase === 'starting' ? 'Preparing webcam…' : capturePhase === 'processing' ? 'Transferring video…' : 'Recording ready to review'}</Text>}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <Pressable accessibilityRole="button" disabled={recordingVideo || transportBusy} style={s.reset} onPress={() => { setPointA(pos); setLoopNotice(''); }}><Text style={s.resetText}>A {pointA === null ? '—' : fmtTime(pointA)}</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={recordingVideo || transportBusy || pointA === null} style={s.reset} onPress={() => { if (pointA === null) return; if (pos - pointA < .5) { setLoopNotice('Set B at least 0.5 seconds after A.'); return; } const range = { start: pointA, end: pos }; void perform(async p => { await p.setLoop(range); setLoopRange(range); setLoopNotice(''); }); }}><Text style={s.resetText}>Set B</Text></Pressable>
+          {loopRange && <Text style={s.small}>{fmtTime(loopRange.start)} – {fmtTime(loopRange.end)}</Text>}
+          {(loopRange || pointA !== null) && <Pressable accessibilityRole="button" disabled={recordingVideo || transportBusy} onPress={() => void perform(async p => { await p.setLoop(null); setLoopRange(null); setPointA(null); setLoopNotice(''); })}><Text style={s.resetText}>Clear</Text></Pressable>}
+        </View>
+        {!!loopNotice && <Text style={s.small}>{loopNotice}</Text>}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}><Text style={s.time}>Speed</Text>{[0.5, 0.75, 1, 1.25, 1.5].map(rate => <Pressable accessibilityRole="button" accessibilityState={{ selected: playbackRate === rate, disabled: recordingVideo }} disabled={recordingVideo || transportBusy} key={rate} onPress={() => void perform(async p => { await p.setPlaybackRate(rate); setPlaybackRate(p.playbackRate); })} style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 10, backgroundColor: playbackRate === rate ? C.cardHi : 'transparent', opacity: recordingVideo ? 0.5 : 1 }}><Text style={{ color: playbackRate === rate ? C.accent : C.sub, fontSize: 11 }}>{rate}×</Text></Pressable>)}</View>
         <View style={s.timeRow}><Text style={s.time}>{fmtTime(pos)}</Text><Text style={s.time}>{fmtTime(duration)}</Text></View>
         <Slider accessibilityLabel={"Playback position"} disabled={recordingVideo} style={s.seekSlider} minimumValue={0} maximumValue={duration || 1} value={pos} minimumTrackTintColor={C.accent} maximumTrackTintColor={C.line} thumbTintColor={C.accent} onSlidingStart={() => setScrubbing(true)} onValueChange={setPos} onSlidingComplete={time => { setScrubbing(false); void seek(time); }} />
         <View style={s.transport}>
           <Pressable accessibilityRole="button" accessibilityLabel={"Repeat track"} accessibilityState={{ selected: !!loopRange }} disabled={transportBusy || recordingVideo} onPress={() => perform(async p => { const range = loopRange ? null : { start: 0, end: duration }; await p.setLoop(range); setLoopRange(range); })} style={[s.sideButton, loopRange && s.repeatOn]}><Text style={[s.sideText, loopRange && { color: C.accent }]}>↻</Text><Text style={s.transportHint}>{loopRange ? "Repeating" : "Repeat"}</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={"Back 10 seconds"} disabled={transportBusy || recordingVideo} onPress={() => seek(pos - 10)} style={s.sideButton}><Text style={s.skip}>−10</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={playing ? "Pause" : "Play"} disabled={transportBusy || !!draft || (recordingVideo && playing)} style={[s.play, transportBusy && { opacity: 0.6 }]} onPress={() => perform(p => p.playing ? p.pause() : playMusic(p))}><Text style={s.playIcon}>{playing ? 'Ⅱ' : '▶'}</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={playing ? "Pause" : "Play"} disabled={transportBusy || capturePhase === 'starting' || capturePhase === 'processing'} style={[s.play, transportBusy && { opacity: 0.6 }]} onPress={() => perform(p => { if (p.playing) { if (capturePhase === 'recording') setRecordCommand(value => value + 1); return p.pause(); } return playMusic(p); })}><Text style={s.playIcon}>{playing ? 'Ⅱ' : '▶'}</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={"Forward 10 seconds"} disabled={transportBusy || recordingVideo} onPress={() => seek(pos + 10)} style={s.sideButton}><Text style={s.skip}>+10</Text></Pressable>
           <View style={s.sideButton}><View style={[s.liveDot, playing && { backgroundColor: C.accent }]} /><Text style={s.transportHint}>{playing ? "Playing" : "Ready"}</Text></View>
         </View>

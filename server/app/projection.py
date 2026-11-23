@@ -6,9 +6,12 @@ import json
 import math
 import re
 import time
+import tempfile
+import subprocess
+import uuid
 from pathlib import Path
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from .display_agent import MovementGuide, Observation, TARGETS
 
 router = APIRouter()
@@ -16,6 +19,41 @@ rooms: dict[str, dict] = {}
 ROOM = re.compile(r'^[a-f0-9]{16}$')
 DEMO_ROOM = 'd8d8d8d8d8d8d8d8'
 LIMBS = ('arm_l', 'arm_r', 'leg_l', 'leg_r')
+RECORDINGS = Path(tempfile.gettempdir()) / 'choreolayer-recordings'
+RECORDINGS.mkdir(exist_ok=True)
+
+@router.post('/projection/recordings/{room}/{take}')
+async def upload_recording(room: str, take: str, request: Request):
+    state = rooms.get(room)
+    if not ROOM.fullmatch(room) or not re.fullmatch(r'[a-f0-9]{32}', take) or not state or state.get('take') != take or state.get('camera') is None:
+        raise HTTPException(404)
+    source, output = RECORDINGS / f'{take}.webm', RECORDINGS / f'{take}.mp4'
+    try:
+        size = 0
+        with source.open('wb') as f:
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > 150 * 1024 * 1024:
+                    raise HTTPException(413)
+                f.write(chunk)
+        if not size:
+            raise HTTPException(400, 'Empty recording')
+        proc = await asyncio.create_subprocess_exec('ffmpeg', '-y', '-i', str(source), '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(output), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if await proc.wait() != 0:
+            raise HTTPException(500, 'Video conversion failed')
+        return {'url': f'/projection/recordings/{room}/{take}'}
+    finally:
+        source.unlink(missing_ok=True)
+
+@router.get('/projection/recordings/{room}/{take}')
+async def download_recording(room: str, take: str):
+    state = rooms.get(room)
+    if not state or state.get('take') != take or not re.fullmatch(r'[a-f0-9]{32}', take):
+        raise HTTPException(404)
+    path = RECORDINGS / f'{take}.mp4'
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(path, media_type='video/mp4')
 
 
 def _number(value):
@@ -180,6 +218,35 @@ async def relay(ws: WebSocket, room: str, role: str):
                 data = json.loads(raw)
                 if not isinstance(data, dict):
                     continue
+                if role == 'publish' and data.get('type') == 'record_command':
+                    action = data.get('action')
+                    if action == 'start' and state.get('camera') and state.get('take') and (RECORDINGS / f"{state['take']}.mp4").exists():
+                        (RECORDINGS / f"{state['take']}.mp4").unlink(missing_ok=True)
+                        state['take'] = None
+                    if action == 'start' and state.get('camera') and not state.get('take'):
+                        state['take'] = uuid.uuid4().hex
+                        await state['camera'].send_text(json.dumps({'type': 'record_command', 'action': action, 'take': state['take']}))
+                    elif action == 'stop' and state.get('camera') and state.get('take'):
+                        await state['camera'].send_text(json.dumps({'type': 'record_command', 'action': action, 'take': state['take']}))
+                    else:
+                        await ws.send_text(json.dumps({'type': 'record_event', 'state': 'error', 'message': 'Webcam is not ready.'}))
+                    continue
+                if role == 'camera' and data.get('type') == 'record_event':
+                    if data.get('take') == state.get('take') and data.get('state') in ('started', 'stopped', 'saved', 'error') and state.get('publisher'):
+                        event = {'type': 'record_event', 'state': data['state'], 'take': data['take']}
+                        if data['state'] == 'saved':
+                            event['url'] = f"/projection/recordings/{room}/{data['take']}"
+                        if data['state'] == 'error':
+                            event['message'] = str(data.get('message', 'Recording failed'))[:200]
+                        await state['publisher'].send_text(json.dumps(event))
+                        if data['state'] == 'error':
+                            state['take'] = None
+                    continue
+                if role == 'publish' and data.get('type') == 'record_release':
+                    take = state.pop('take', None)
+                    if take:
+                        (RECORDINGS / f'{take}.mp4').unlink(missing_ok=True)
+                    continue
                 if role == 'camera':  # kept until the phone's next packet carries it to the viewers
                     cam = {'at': time.monotonic(), 'answering': data.get('answering') is True}
                     for key, check in (('movement', _movement), ('parts', _parts), ('space', _space), ('body', _body), ('explored', _targets)):
@@ -276,12 +343,18 @@ async def relay(ws: WebSocket, room: str, role: str):
         pass
     finally:
         if role == 'publish':
+            take = state.pop('take', None)
+            if take:
+                (RECORDINGS / f'{take}.mp4').unlink(missing_ok=True)
             state['publisher'] = None
             state['last'] = None
             state['last_at'] = None
             state['guide'] = None
             await broadcast(state, '{"active":false,"cells":[]}')
         elif role == 'camera':
+            if state.get('take') and state.get('publisher'):
+                await asyncio.gather(state['publisher'].send_text(json.dumps({'type': 'record_event', 'state': 'error', 'message': 'Webcam disconnected.'})), return_exceptions=True)
+                state['take'] = None
             state['camera'] = None
             state['cam'] = None
         else:
