@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "esbuild": "0.25.5",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
@@ -58,7 +59,8 @@
     "models": "node scripts/download-models.cjs",
     "eas-build-post-install": "npm run models",
     "test:tracking": "node scripts/test-tracking.cjs",
-    "build:android": "node scripts/android.cjs --build-only"
+    "build:android": "node scripts/android.cjs --build-only",
+    "build:display": "node scripts/build-display.cjs"
   },
   "private": true
 }
