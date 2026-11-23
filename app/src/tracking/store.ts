@@ -1,6 +1,7 @@
 // Glue between the pose-camera events, the music player and the camera tab. Holds one LiveSession for the
 // whole practice session (it outlives tab switches) and exposes a throttled view for useSyncExternalStore.
 import { DEFAULT_CONFIG, type TrackingConfig } from './config';
+import { MovementLabeler } from './labels';
 import { LiveSession } from './session';
 import { NUM_LANDMARKS } from './types';
 import { countInEight, planFor, type EightPlan } from './windows';
@@ -45,6 +46,8 @@ const planName = (p: EightPlan): PlanName => (p.kind === 'grid' ? p.source : p.k
 
 export class LiveTrackingStore {
   readonly session: LiveSession;
+  /** The display's movement words (labels.ts), read from the phone's frames like the webcam reads its own. */
+  readonly labeler: MovementLabeler;
   private view: TrackingView;
   private pending: Partial<TrackingView> = {};
   private listeners = new Set<() => void>();
@@ -64,6 +67,7 @@ export class LiveTrackingStore {
   constructor(private readonly cfg: TrackingConfig = DEFAULT_CONFIG, o: { wallNowMs?: () => number; perfNowMs?: () => number } = {}) {
     this.wallNow = o.wallNowMs ?? (() => Date.now());
     this.plan = planFor(null, null, cfg.aggregate.windows['8count_s']);
+    this.labeler = new MovementLabeler(cfg.labels);
     this.session = new LiveSession(cfg, m => this.onMessage(m), {
       model: 'lite', delegate: 'gpu', captureFrom: 'sensor', clockMs: this.wallNow, perfNowMs: o.perfNowMs, plan: this.plan,
     });
@@ -139,12 +143,14 @@ export class LiveTrackingStore {
    */
   requestRecalibration(): void {
     this.session.recalibrate();
+    this.labeler.reset();
     this.mustCalibrate = true;
   }
 
   /** The dance-start 'recalibrate' action: reset the tracker for the 3 s measurement now (clears the owed one). */
   recalibrate(): void {
     this.session.recalibrate();
+    this.labeler.reset();
     this.mustCalibrate = false;
   }
 
@@ -156,6 +162,7 @@ export class LiveTrackingStore {
     this.session.perf.captureFrom = e.captureFrom;
     if (!pose) this.pending.pose = null; // nobody in view: clear the skeleton
     this.session.step(e.tMs, pose, e.aspect, { playing: music.playing && this.capturing, musicT }, { captureMs: e.latencyMs, sourceFrames: e.seq });
+    if (pose) this.labeler.add({ tMs: e.tMs, image: pose.image.map(p => [p[0], p[1]] as [number, number]), visibility: pose.visibility, aspect: e.aspect, musicT: music.playing ? musicT : null, beatS: null });
     this.set({ playing: music.playing, count: countInEight(this.plan, musicT), error: null }); // frames flowing: an earlier error is over
   }
 

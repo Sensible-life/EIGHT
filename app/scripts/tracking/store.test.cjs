@@ -171,3 +171,18 @@ function harness({ playing = true, stepMs = 66 } = {}) {
   h.store.importTracking(undefined); // sessions saved before tracking existed
   assert.deepEqual(h.store.exportTracking(), saved, 'importing nothing keeps the restored totals');
 }
+{
+  // the phone's frames feed the same labeler as the display: 3 s standing, then 3 s of the left arm swinging
+  const store = new LiveTrackingStore();
+  for (let n = 0; n < 180; n++) {
+    const tMs = n * 1000 / 30, img = standingImage();
+    if (n >= 90) { const s = Math.sin(2 * Math.PI * tMs / 1000); img[S.L_WRIST][0] += 0.12 * s; img[S.L_ELBOW][0] += 0.06 * s; }
+    store.handlePose(event(tMs, img, 1_000_000 + tMs));
+  }
+  const label = store.labeler.label();
+  assert.ok(label && label.parts.arm_l.kind !== null && label.parts.arm_l.kind !== 'hold', JSON.stringify(label?.parts.arm_l));
+  assert.ok(store.labeler.calibrated, 'the still start set the home spot');
+  store.requestRecalibration();
+  assert.equal(store.labeler.label(), null, 'recalibration forgets the labels');
+  assert.equal(store.labeler.calibrated, false);
+}

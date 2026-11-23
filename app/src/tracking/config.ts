@@ -53,6 +53,36 @@ export type TrackingConfig = {
     high_rise: number; high_leg: number; // the high row: hip rise, or tiptoe leg extent ratio
     lean_on_deg: number; lean_off_deg: number;
   };
+  /** Live movement words for the display (labels.ts). Lengths in torso lengths, speeds in torso lengths per second. */
+  labels: {
+    window_s: number; // about one 8-count
+    visibility: number;
+    min_seen: number; // a part seen in fewer of the window's frame pairs than this is unknown, not still
+    smooth: number; // share of the new position per frame (landmark jitter would read as speed)
+    speed: { still: number; slow: number; fast: number };
+    size: { small: number; large: number }; // extent of the path
+    travel: number; // hip travel that counts as going somewhere
+    sharp: number; // peak speed over mean speed
+    lead_share: number; // below this no single part leads
+    beat_near: number; // a speed peak this close to a beat (fraction of a beat) is on it
+    limb: { circle_rad: number; reach: number; swing_rad: number }; // turn around the root; change of extension (0..1); arc
+    torso: { shift: number; jump: number; feet_up: number; drop: number }; // hips over still feet; hip rise; ankle rise; leg length vs standing
+    calibrate_s: number; // standing still this long sets the home spot
+    space: { zone: number; near: number; far: number; weight: number }; // sideways offset; torso size vs home; hips off the feet
+    zone_history_s: number; // how long the left / center / right history is kept
+  };
+  /** Saying yes to the display's question without hands: an O with both arms over the head (answer.ts). */
+  answer: {
+    hold_s: number; // held this long without a break
+    visibility: number; // every joint involved must be seen at least this well
+    wrist_gap: number; // wrists at most this far apart, torso lengths
+    head_top: number; // the top of the head is this far above the nose, torso lengths
+  };
+  /** The dancer's left / right sides as targets for the display's character (targets.ts). Limbs and heights use `feedback`. */
+  targets: {
+    zone_min_share: number; // a side visited less than this share of the recent window is lacking
+    zone_explored_share: number; // a side visited at least this share of the 8-count window was tried
+  };
 };
 
 export const DEFAULT_CONFIG: TrackingConfig = {
@@ -94,6 +124,19 @@ export const DEFAULT_CONFIG: TrackingConfig = {
     low_leg: 0.75, low_leg_off: 0.85, low_drop: 0.5, high_rise: 0.15, high_leg: 1.08,
     lean_on_deg: 18, lean_off_deg: 10,
   },
+  labels: { // all (tune): first values from scripted figures (labels.test.cjs), not real dancers
+    window_s: 4, visibility: 0.5, min_seen: 0.5, smooth: 0.5,
+    speed: { still: 0.12, slow: 0.5, fast: 1.3 },
+    size: { small: 0.35, large: 1.0 },
+    travel: 0.35, sharp: 2.6, lead_share: 0.34, beat_near: 0.2,
+    limb: { circle_rad: 1.5 * Math.PI, reach: 0.3, swing_rad: 0.5 },
+    torso: { shift: 0.2, jump: 0.2, feet_up: 0.1, drop: 0.75 },
+    calibrate_s: 1.5,
+    space: { zone: 0.8, near: 1.2, far: 0.83, weight: 0.25 },
+    zone_history_s: 30,
+  },
+  answer: { hold_s: 3, visibility: 0.6, wrist_gap: 0.6, head_top: 0.3 }, // (tune)
+  targets: { zone_min_share: 0.1, zone_explored_share: 0.2 }, // (tune)
 };
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends unknown[] ? T[K] : T[K] extends object ? DeepPartial<T[K]> : T[K] };

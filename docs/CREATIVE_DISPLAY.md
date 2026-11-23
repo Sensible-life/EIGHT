@@ -20,15 +20,26 @@ Open `http://localhost:8000/display/demo` on the server computer. The page is ex
 
 An updated phone app JS bundle is needed to send body aggregates. Older phone bundles still send the floor heatmap, but the 8 remains neutral and the guide does not offer body-based ideas. The phone camera must remain visible, recording, tracking active, and arms and legs visible. The body values summarize the recent 30-second window: the upper ring represents relative arm activity and the lower ring represents relative leg activity, normalized against one another. They are estimates, not scores, quality assessments, or measurements of strength. A missing/occluded body part is not counted as unused. Tracking loss, music pause, stopping the recording and a stale connection suppress proposals. No camera images or pose coordinates are transmitted.
 
-## Movement camera (computer webcam)
+## The display with the computer's webcam
 
-Open `http://localhost:8000/movement` on the computer with the webcam. The page runs MediaPipe Pose in the browser and `server/app/movement.js` turns the landmarks of the last 4 seconds into words, shown on the page and published to its own room (the page links to its `/display/<room>`):
+The display reads the dancer itself with the same tracking code as the phone (`app/src/tracking/`, bundled into `server/app/static/tracking.js` by `npm run build:display` in `app/`). Three modes, chosen by the address:
 
-- **Each part** (left/right arm, left/right leg, torso): a kind (`hold`, `reach`, `circle`, `swing`, `shake`; torso `hold`, `shift` = hips move over still feet, `travel`, `jump`, `drop`), plus speed, size, texture (`smooth`/`sharp`), where it points and timing against an optional BPM.
-- **Space**, against the spot where the dancer stood still for 1.5 s: zone (left/center/right, the dancer's own sides), level, depth (from the body's size in the frame), which foot the hips are over, the offset in torso lengths and the width used so far.
-- **Whole body**: one summary line (speed, size, direction, texture, lead part, timing).
+| Address | Who reads the dancer | Notes |
+|---|---|---|
+| `/display` | this computer's webcam | a new room on every load; no phone needed |
+| `/display?room=<phone room>` | this computer's webcam, inside a phone session | the phone gives the music clock and recording; the debug view lists phone sessions to join |
+| `/display/<room>` | the phone's camera | as before; video stays on the phone |
 
-Video and landmarks stay in the page; the relay passes only known words and bounded numbers (`movement`, `parts`, `space` in `projection.py`). Positions are 2D, so a reach towards the camera or a spin on the spot is not seen. The thresholds (`MOVEMENT_DEFAULTS`) are first values tuned on scripted figures (`node server/tests/movement.test.mjs`) and still need tuning on real dancers. The page does not know the phone's music position, so its room is separate from a phone session's room.
+`/movement` (the old webcam page) redirects to `/display`. The page asks to stand still for 3 seconds (calibration), then shows the rings, the space and the movement words:
+
+- **Each part** (left/right arm, left/right leg, torso): a kind (`hold`, `reach`, `circle`, `swing`, `shake`; torso `hold`, `shift`, `travel`, `jump`, `drop`), plus speed, size, texture, direction and timing against the phone's music or a typed BPM. A part not seen enough is unknown, never "still", and is never pointed out as unused.
+- **Space**, against the spot where the dancer stood still: zone (the dancer's own left/center/right), level, depth, weight and width used.
+
+**Debug view** (`D` or the Debug button, remembered per browser): the mirrored video with the skeleton, fps and GPU/CPU, tracker state, part shares, unknown parts, heights, what is lacking and what was tried, the guide's state and timers, the input (webcam or a looping dance video), a BPM field, and the room address.
+
+**The character with a webcam**: after a 15 s warm-up, a limb, height (low/high) or side (left/right) that stays lacking for 8 s makes it ask "Need some help?" (cooldown 30 s, the same target 60 s; the longest-lacking target first). The dancer says yes with an **O over the head held for 3 s**; no O within 12 s is a no ("Maybe later."). Keyboard `Y`/`N`, the buttons, and (in a phone session) the phone and watch answer too. After a yes, trying the target within 60 s shows "You tried it." The phone camera's rules (2 minutes without a save, or three passes through a loop) are unchanged.
+
+Video and landmarks stay in the page; the relay passes only known words and bounded numbers (`movement`, `parts`, `space`, `body`, plus `explored`/`answering` for the guide, in `projection.py`). Positions are 2D, so a reach towards the camera or a spin on the spot is not seen. The thresholds (`labels`, `answer`, `targets` in `app/src/tracking/config.ts`) are first values tuned on scripted figures and still need tuning on real dancers.
 
 ## Workflow
 
@@ -46,4 +57,4 @@ These thresholds and prompts are starting points for testing, not validated reco
 
 The page and the Python service use WebSockets on the local network. There is no room authentication or encryption in this prototype: anyone with the room URL on the trusted LAN can view aggregates or respond to suggestions. Publishing is single-writer per room. No pose/video or decisions are persisted by the display workflow.
 
-The browser view is a display client. It does **not** use the computer's webcam: current real input comes from the phone's MediaPipe pipeline. A packaged macOS app (`.app` distributed in a `.dmg`) or Windows executable can host the same Python workflow and view, but an actual desktop-camera adapter, model/runtime distribution, camera permissions, installers/signing and cross-platform device tests remain separate work. Add an adapter that emits the same aggregate observation contract; do not send raw camera frames through the display relay.
+The browser view reads the computer's webcam at `/display` (above) and the phone's aggregates at `/display/<room>`. The pose model and MediaPipe library load from a CDN, so the display computer needs internet access. A packaged macOS app (`.app` distributed in a `.dmg`) or Windows executable can host the same Python workflow and view, but an actual desktop-camera adapter, model/runtime distribution, camera permissions, installers/signing and cross-platform device tests remain separate work. Add an adapter that emits the same aggregate observation contract; do not send raw camera frames through the display relay.
