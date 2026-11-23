@@ -17,7 +17,8 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
 .answer{display:flex;align-items:center;gap:14px;margin-top:16px;font-size:clamp(15px,1.6vw,20px);font-weight:650;color:#f8eafa}.answer svg{width:clamp(44px,4.5vw,60px);height:clamp(44px,4.5vw,60px);flex:none;transform:rotate(-90deg)}.answer .track{stroke:#ffffff22}.answer .fill{stroke:#f078eb;transition:stroke-dashoffset .1s linear}
 .notice{position:fixed;left:50%;top:clamp(70px,12vh,120px);transform:translateX(-50%);z-index:5;background:#1d1626ee;border:1px solid #ffffff2a;border-radius:22px;padding:18px 26px;text-align:center;font-size:clamp(20px,2.6vw,34px);font-weight:650;letter-spacing:-.02em;box-shadow:0 18px 50px #0008;max-width:calc(100vw - 32px)}.notice small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:6px;letter-spacing:0}.bar{height:6px;border-radius:6px;background:#ffffff1a;margin-top:12px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:#f078eb;transition:width .2s}
 .debug-toggle{border:1px solid var(--line);background:#ffffff08;border-radius:99px;padding:8px 12px;color:#d8ccdf;font-size:11px;letter-spacing:.05em}
-.debug{position:fixed;right:16px;bottom:16px;z-index:6;width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:#140f1cf2;border:1px solid #ffffff2a;border-radius:18px;padding:14px;font-size:12px;line-height:1.5;box-shadow:0 18px 50px #000a;transition:transform .25s}.debug.closed{transform:translateX(calc(100% + 40px));pointer-events:none}
+.debug{position:fixed;right:16px;bottom:16px;z-index:6;width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:#140f1cf2;border:1px solid #ffffff2a;border-radius:18px;padding:14px;font-size:12px;line-height:1.5;box-shadow:0 18px 50px #000a;transition:transform .25s}.debug.closed{transform:translateX(calc(100vw + 40px));pointer-events:none}.debug.dragging{transition:none;user-select:none}
+.drag-handle{cursor:grab;touch-action:none;margin:-14px -14px 0;padding:12px 14px 8px;border-radius:18px 18px 0 0}.drag-handle:active{cursor:grabbing}.drag-handle:focus-visible{outline:2px solid #f3a6ef;outline-offset:-2px}
 .stage{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .debug dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:10px 0}.debug dt{color:var(--muted)}.debug dd{margin:0;font-variant-numeric:tabular-nums;word-break:break-word}.debug input{font:inherit;background:#ffffff12;border:1px solid var(--line);border-radius:8px;color:inherit;padding:4px 8px}.debug input[type=number]{width:80px}.debug a{color:#e4c2e7}
 @media(max-width:760px){main{grid-template-columns:1fr;gap:24px}.shell{padding:20px}.figure{width:min(60%,280px)}.visual h1{font-size:32px}.dashboard{padding-bottom:14px}.heat{width:44%}.foot{flex-direction:column;align-items:flex-start}.brand{font-size:19px}}
@@ -50,7 +51,7 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95
 </div>
 <div id="notice" class="notice hidden" role="status"><span id="notice-text"></span><small id="notice-sub"></small><div id="notice-bar" class="bar hidden"><i id="notice-fill"></i></div></div>
 <aside id="debug" class="debug closed" aria-label="Debug view">
-  <div class="card-head"><div class="micro">Debug</div><span class="info">D to close</span></div>
+  <div id="debug-handle" class="card-head drag-handle" tabindex="0" role="button" aria-label="Move the debug view (drag, or arrow keys; double-click to reset)" title="Drag to move · double-click to reset"><div class="micro">Debug ⠿</div><span class="info">Drag to move · D to close</span></div>
   <div id="debug-phone" class="hidden" style="margin-top:8px">Video stays on the phone. Check the phone's camera tab.</div>
   <div id="debug-webcam">
     <div class="stage" style="margin-top:8px"><video id="video" muted playsinline></video><canvas id="overlay"></canvas></div>
@@ -219,6 +220,42 @@ const setDebug = on => {
 };
 try { setDebug(localStorage.getItem('eight.debug') === '1'); } catch { setDebug(false); }
 $('debug-toggle').onclick = () => setDebug(!debugOpen);
+
+// The debug view can be dragged by its header (or moved with the arrow keys); double-click puts it back in the corner.
+// The spot is remembered per browser and kept inside the window.
+{
+  const panel = $('debug'), handle = $('debug-handle');
+  let drag = null, pos = null;
+  try { const saved = JSON.parse(localStorage.getItem('eight.debug.pos') ?? 'null'); if (Number.isFinite(saved?.x) && Number.isFinite(saved?.y)) pos = saved; } catch {}
+  const place = () => {
+    if (!pos) { Object.assign(panel.style, { left: '', top: '', right: '', bottom: '', maxHeight: '' }); return; }
+    const w = panel.offsetWidth;
+    pos = { x: Math.max(8, Math.min(pos.x, innerWidth - w - 8)), y: Math.max(8, Math.min(pos.y, innerHeight - 128)) };
+    // the panel scrolls inside whatever room is left below its top edge, so nothing ends up off screen
+    Object.assign(panel.style, { left: `${pos.x}px`, top: `${pos.y}px`, right: 'auto', bottom: 'auto', maxHeight: `${innerHeight - pos.y - 8}px` });
+  };
+  const save = () => { try { localStorage.setItem('eight.debug.pos', JSON.stringify(pos)); } catch {} };
+  handle.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const r = panel.getBoundingClientRect();
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    handle.setPointerCapture(e.pointerId); panel.classList.add('dragging');
+  });
+  handle.addEventListener('pointermove', e => { if (drag) { pos = { x: e.clientX - drag.dx, y: e.clientY - drag.dy }; place(); } });
+  const drop = () => { if (!drag) return; drag = null; panel.classList.remove('dragging'); save(); };
+  handle.addEventListener('pointerup', drop);
+  handle.addEventListener('pointercancel', drop);
+  handle.addEventListener('dblclick', () => { pos = null; place(); save(); });
+  handle.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 80 : 20, move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!move) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = panel.getBoundingClientRect();
+    pos = { x: r.left + move[0], y: r.top + move[1] }; place(); save();
+  });
+  addEventListener('resize', place);
+  place();
+}
 $('debug-phone').classList.toggle('hidden', webcam || isDemo);
 $('debug-webcam').classList.toggle('hidden', !webcam);
 addEventListener('keydown', e => {
