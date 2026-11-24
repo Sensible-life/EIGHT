@@ -23,6 +23,10 @@ export function percentile(xs: number[], q: number): number {
 
 /** Python round(x, digits): exact ties go to the even neighbour (Math.round goes up). */
 export function pyRound(x: number, digits: number): number {
+  // Fast path: away from a tie, rounding to nearest is the same whichever way ties go (the exact check below builds
+  // a 30-digit string, and this runs dozens of times a tenth of a second).
+  const m0 = 10 ** digits, y0 = Math.abs(x) * m0, f0 = y0 - Math.floor(y0);
+  if (Number.isFinite(y0) && Math.abs(f0 - 0.5) > 1e-6) return Number(x.toFixed(digits));
   const s = Math.abs(x).toFixed(digits + 30);
   if (!/^50*$/.test(s.slice(s.indexOf('.') + 1 + digits))) return Number(x.toFixed(digits));
   const m = 10 ** digits, y = Math.trunc(x * m);

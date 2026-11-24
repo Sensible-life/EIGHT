@@ -11,13 +11,13 @@ import type { FrameResult, Level, Segment, UsageMessage, UsageTotals, WindowName
 export const emptyTotals = (): UsageTotals => ({ frames: 0, score: bySegment(() => 0), observed: bySegment(() => 0), levels: byLevel(() => 0) });
 
 /** A segment with a non-finite score counts as not observed in that frame (one bad landmark must not poison the saved totals). */
-export function addToTotals(t: UsageTotals, r: FrameResult): void {
-  t.frames += 1;
-  if (r.level) t.levels[r.level] += 1;
+export function addToTotals(t: UsageTotals, r: FrameResult, sign: 1 | -1 = 1): void {
+  t.frames += sign;
+  if (r.level) t.levels[r.level] += sign;
   if (!r.scores || !r.observed) return;
   for (const s of SEGMENT_NAMES) {
     const score = r.scores[s] ?? 0;
-    if (r.observed[s] && Number.isFinite(score)) { t.observed[s] += 1; t.score[s] += score; }
+    if (r.observed[s] && Number.isFinite(score)) { t.observed[s] += sign; t.score[s] += sign * score; }
   }
 }
 
@@ -120,8 +120,13 @@ export class UsageAccumulator {
     if (window === 'session') return mergeTotals(this.base, this.session);
     if (window === '8count' && this.plan.kind !== 'rolling') return this.eight?.totals ?? emptyTotals();
     const span = window === 'recent' ? this.o.recentMs : this.plan.kind === 'rolling' ? this.plan.ms : 0;
-    const t = emptyTotals();
-    for (const s of this.samples) if (s.activeMs > nowActiveMs - span) addToTotals(t, s);
+    // Only the samples at the window's old end are summed: those with activeMs <= nowActiveMs - span are left out.
+    // The samples are in activeMs order, so the window is a tail of them; summing the tail directly matches summing
+    // the whole list with the same test, frame for frame and in the same order.
+    const t = emptyTotals(), from = nowActiveMs - span, s = this.samples;
+    let lo = 0, hi = s.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (s[mid].activeMs > from) hi = mid; else lo = mid + 1; }
+    for (let i = lo; i < s.length; i++) addToTotals(t, s[i]);
     return t;
   }
 

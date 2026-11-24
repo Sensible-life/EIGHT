@@ -41,7 +41,7 @@ const TRUNK = [11, 12, 23, 24];
 const JOINTS = [0, ...TRUNK, 13, 14, 15, 16, 25, 26, 27, 28];
 const UNKNOWN: PartLabel = { kind: null, speed: null, size: null, texture: null, toward: null, timing: null };
 const sub = (a: P2, b: P2): P2 => [a[0] - b[0], a[1] - b[1]];
-const len = (v: P2) => Math.hypot(v[0], v[1]);
+const len = (v: P2) => Math.sqrt(v[0] * v[0] + v[1] * v[1]); // not Math.hypot: several times slower, and this runs thousands of times a reading
 const mean = (a: number[]) => a.reduce((n, x) => n + x, 0) / (a.length || 1);
 const r2 = (x: number) => Math.round(100 * x) / 100;
 const known = (a: (number | null)[]) => a.filter((x): x is number => x !== null);
@@ -52,11 +52,13 @@ const box = (pts: P2[]) => { // extent of a path
 };
 /** How far a vector turned around its origin along a path (radians, signed), and the lowest and highest it got. */
 const winding = (path: P2[]) => {
-  let turn = 0, lo = 0, hi = 0;
+  let turn = 0, lo = 0, hi = 0, was = path.length ? Math.atan2(path[0][1], path[0][0]) : 0; // one angle per point
   for (let i = 1; i < path.length; i++) {
-    let da = Math.atan2(path[i][1], path[i][0]) - Math.atan2(path[i - 1][1], path[i - 1][0]);
-    da -= 2 * Math.PI * Math.round(da / (2 * Math.PI));
-    turn += da; lo = Math.min(lo, turn); hi = Math.max(hi, turn);
+    const now = Math.atan2(path[i][1], path[i][0]);
+    let da = now - was;
+    if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
+    was = now; turn += da;
+    if (turn < lo) lo = turn; else if (turn > hi) hi = turn;
   }
   return { turn, lo, hi };
 };

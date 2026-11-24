@@ -80,6 +80,10 @@ export class DisplayTracker {
   private pose: PoseMessage | null = null;
   private nowMs = 0; // message timestamps are frame times, so the heatmap and the windows share one clock
   private lastTMs: number | null = null;
+  // The words, targets and packet: worked out READ_MS apart, not every frame (the page sends 4 packets a second, and a
+  // reading takes a few milliseconds); right away when somebody comes into or out of view.
+  private reading: { atMs: number; active: boolean; packet: DisplayPacket; label: MovementLabel | null; lacking: Target[] } | null = null;
+  static readonly READ_MS = 200;
 
   constructor(private readonly cfg: TrackingConfig = DEFAULT_CONFIG) {
     this.reset();
@@ -95,6 +99,7 @@ export class DisplayTracker {
     this.status = null;
     this.pose = null;
     this.lastTMs = null;
+    this.reading = null;
   }
 
   step(e: PoseEvent, ctx: DisplayContext): DisplayFrame {
@@ -107,10 +112,14 @@ export class DisplayTracker {
     const answer = this.answer.update(pose, e.aspect, ctx.asking, e.tMs);
     const active = pose !== null && this.session.pipeline.tracker.state === 'tracking';
     const cells = this.heat.update(this.pose, active, e.tMs);
-    const label = active ? this.labeler.label() : null;
-    const zones30 = this.labeler.zoneShares(this.cfg.aggregate.windows.recent_s), zones8 = this.labeler.zoneShares(this.cfg.aggregate.windows['8count_s']);
-    const packet = buildPacket({ source: 'webcam', active, cells, label, usage: this.usage, zones30, zones8, answering: answer.progress > 0 }, this.cfg);
-    const lacking = active ? lackingTargets(this.usage.recent, zones30, this.cfg) : [];
+    const r = this.reading;
+    if (!r || r.active !== active || e.tMs - r.atMs >= DisplayTracker.READ_MS) {
+      const label = active ? this.labeler.label() : null;
+      const zones30 = this.labeler.zoneShares(this.cfg.aggregate.windows.recent_s), zones8 = this.labeler.zoneShares(this.cfg.aggregate.windows['8count_s']);
+      const packet = buildPacket({ source: 'webcam', active, cells, label, usage: this.usage, zones30, zones8, answering: answer.progress > 0 }, this.cfg);
+      this.reading = { atMs: e.tMs, active, packet, label, lacking: active ? lackingTargets(this.usage.recent, zones30, this.cfg) : [] };
+    }
+    const { packet, label, lacking } = this.reading!;
     return { packet, pose: this.pose, status: this.status, usage: this.usage, label, lacking, answer };
   }
 

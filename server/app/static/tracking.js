@@ -180,7 +180,7 @@ var TRUNK = [11, 12, 23, 24];
 var JOINTS = [0, ...TRUNK, 13, 14, 15, 16, 25, 26, 27, 28];
 var UNKNOWN = { kind: null, speed: null, size: null, texture: null, toward: null, timing: null };
 var sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
-var len = (v) => Math.hypot(v[0], v[1]);
+var len = (v) => Math.sqrt(v[0] * v[0] + v[1] * v[1]);
 var mean = (a) => a.reduce((n, x) => n + x, 0) / (a.length || 1);
 var r2 = (x) => Math.round(100 * x) / 100;
 var known = (a) => a.filter((x) => x !== null);
@@ -190,13 +190,16 @@ var box = (pts) => {
   return { w, h, d: Math.hypot(w, h) };
 };
 var winding = (path) => {
-  let turn = 0, lo = 0, hi = 0;
+  let turn = 0, lo = 0, hi = 0, was = path.length ? Math.atan2(path[0][1], path[0][0]) : 0;
   for (let i = 1; i < path.length; i++) {
-    let da = Math.atan2(path[i][1], path[i][0]) - Math.atan2(path[i - 1][1], path[i - 1][0]);
-    da -= 2 * Math.PI * Math.round(da / (2 * Math.PI));
+    const now = Math.atan2(path[i][1], path[i][0]);
+    let da = now - was;
+    if (da > Math.PI) da -= 2 * Math.PI;
+    else if (da < -Math.PI) da += 2 * Math.PI;
+    was = now;
     turn += da;
-    lo = Math.min(lo, turn);
-    hi = Math.max(hi, turn);
+    if (turn < lo) lo = turn;
+    else if (turn > hi) hi = turn;
   }
   return { turn, lo, hi };
 };
@@ -484,6 +487,8 @@ function percentile(xs, q) {
   return t >= 0.5 ? s[hi] - d * (1 - t) : s[lo] + d * t;
 }
 function pyRound(x, digits) {
+  const m0 = 10 ** digits, y0 = Math.abs(x) * m0, f0 = y0 - Math.floor(y0);
+  if (Number.isFinite(y0) && Math.abs(f0 - 0.5) > 1e-6) return Number(x.toFixed(digits));
   const s = Math.abs(x).toFixed(digits + 30);
   if (!/^50*$/.test(s.slice(s.indexOf(".") + 1 + digits))) return Number(x.toFixed(digits));
   const m = 10 ** digits, y = Math.trunc(x * m);
@@ -1321,15 +1326,15 @@ function eightKey(plan, musicT) {
 
 // src/tracking/usage.ts
 var emptyTotals = () => ({ frames: 0, score: bySegment(() => 0), observed: bySegment(() => 0), levels: byLevel(() => 0) });
-function addToTotals(t, r) {
-  t.frames += 1;
-  if (r.level) t.levels[r.level] += 1;
+function addToTotals(t, r, sign = 1) {
+  t.frames += sign;
+  if (r.level) t.levels[r.level] += sign;
   if (!r.scores || !r.observed) return;
   for (const s of SEGMENT_NAMES) {
     const score = r.scores[s] ?? 0;
     if (r.observed[s] && Number.isFinite(score)) {
-      t.observed[s] += 1;
-      t.score[s] += score;
+      t.observed[s] += sign;
+      t.score[s] += sign * score;
     }
   }
 }
@@ -1417,8 +1422,14 @@ var UsageAccumulator = class {
     if (window === "session") return mergeTotals(this.base, this.session);
     if (window === "8count" && this.plan.kind !== "rolling") return this.eight?.totals ?? emptyTotals();
     const span = window === "recent" ? this.o.recentMs : this.plan.kind === "rolling" ? this.plan.ms : 0;
-    const t = emptyTotals();
-    for (const s of this.samples) if (s.activeMs > nowActiveMs - span) addToTotals(t, s);
+    const t = emptyTotals(), from = nowActiveMs - span, s = this.samples;
+    let lo = 0, hi = s.length;
+    while (lo < hi) {
+      const mid2 = lo + hi >> 1;
+      if (s[mid2].activeMs > from) hi = mid2;
+      else lo = mid2 + 1;
+    }
+    for (let i = lo; i < s.length; i++) addToTotals(t, s[i]);
     return t;
   }
   /** Was the dancer detected steadily in the last tracking window of camera time? */
@@ -1938,7 +1949,7 @@ function buildPacket(i, cfg) {
   if (i.answering) p.answering = true;
   return p;
 }
-var DisplayTracker = class {
+var _DisplayTracker = class _DisplayTracker {
   constructor(cfg = DEFAULT_CONFIG) {
     this.cfg = cfg;
     __publicField(this, "session");
@@ -1951,6 +1962,9 @@ var DisplayTracker = class {
     __publicField(this, "nowMs", 0);
     // message timestamps are frame times, so the heatmap and the windows share one clock
     __publicField(this, "lastTMs", null);
+    // The words, targets and packet: worked out READ_MS apart, not every frame (the page sends 4 packets a second, and a
+    // reading takes a few milliseconds); right away when somebody comes into or out of view.
+    __publicField(this, "reading", null);
     this.reset();
   }
   /** Start over: calibrate again, forget every window (a new camera, a looped video). */
@@ -1963,6 +1977,7 @@ var DisplayTracker = class {
     this.status = null;
     this.pose = null;
     this.lastTMs = null;
+    this.reading = null;
   }
   step(e, ctx) {
     if (this.lastTMs !== null && e.tMs < this.lastTMs) this.reset();
@@ -1974,10 +1989,14 @@ var DisplayTracker = class {
     const answer = this.answer.update(pose, e.aspect, ctx.asking, e.tMs);
     const active = pose !== null && this.session.pipeline.tracker.state === "tracking";
     const cells = this.heat.update(this.pose, active, e.tMs);
-    const label2 = active ? this.labeler.label() : null;
-    const zones30 = this.labeler.zoneShares(this.cfg.aggregate.windows.recent_s), zones8 = this.labeler.zoneShares(this.cfg.aggregate.windows["8count_s"]);
-    const packet = buildPacket({ source: "webcam", active, cells, label: label2, usage: this.usage, zones30, zones8, answering: answer.progress > 0 }, this.cfg);
-    const lacking = active ? lackingTargets(this.usage.recent, zones30, this.cfg) : [];
+    const r = this.reading;
+    if (!r || r.active !== active || e.tMs - r.atMs >= _DisplayTracker.READ_MS) {
+      const label3 = active ? this.labeler.label() : null;
+      const zones30 = this.labeler.zoneShares(this.cfg.aggregate.windows.recent_s), zones8 = this.labeler.zoneShares(this.cfg.aggregate.windows["8count_s"]);
+      const packet2 = buildPacket({ source: "webcam", active, cells, label: label3, usage: this.usage, zones30, zones8, answering: answer.progress > 0 }, this.cfg);
+      this.reading = { atMs: e.tMs, active, packet: packet2, label: label3, lacking: active ? lackingTargets(this.usage.recent, zones30, this.cfg) : [] };
+    }
+    const { packet, label: label2, lacking } = this.reading;
     return { packet, pose: this.pose, status: this.status, usage: this.usage, label: label2, lacking, answer };
   }
   onMessage(m) {
@@ -1986,6 +2005,8 @@ var DisplayTracker = class {
     else if (m.type === "pose") this.pose = m;
   }
 };
+__publicField(_DisplayTracker, "READ_MS", 200);
+var DisplayTracker = _DisplayTracker;
 export {
   BEAT_S,
   DEFAULT_CONFIG,
