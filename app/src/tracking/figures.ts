@@ -57,7 +57,8 @@ const forearmLeft: Pose = (t, P) => { const a = Math.PI * t; P[13] = [0.66, 0.3]
 const march: Pose = (t, P) => { // the feet take turns rising a little, on the beat
   for (const [ankle, knee, phase] of [[27, 25, 0], [28, 26, Math.PI]] as const) { const up = Math.max(0, Math.sin(Math.PI * t / BEAT_S + phase)); P[ankle][1] -= 0.04 * up; P[knee][1] -= 0.02 * up; }
 };
-const shakeRight: Pose =(t, P) => { const a = 2 * Math.PI * 6 * t; P[16] = [0.41 + 0.015 * Math.sin(a), 0.5 + 0.01 * Math.cos(a)]; };
+// a hand shaken fast, about as wide as a real one (a much smaller shake is lost in camera jitter)
+const shakeRight: Pose = (t, P) => { const a = 2 * Math.PI * 6 * t; P[16] = [0.41 + 0.03 * Math.sin(a), 0.5 + 0.02 * Math.cos(a)]; };
 const kneeLeft: Pose = (t, P) => { const up = punch(beat(t)); P[25] = [0.56, 0.65 - 0.12 * up]; P[27] = [0.55, 0.8 - 0.14 * up]; }; // knee up on the beat
 const kick = (side: 1 | -1): Pose => (t, P) => { // out to the dancer's side and back, on the beat
   const out = Math.abs(Math.sin(Math.PI * t / BEAT_S / 2)), [hip, knee, ankle] = side > 0 ? [23, 25, 27] : [24, 26, 28];

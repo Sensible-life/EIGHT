@@ -140,6 +140,6 @@
 | `server/app/moves.html` | 동작 설명 페이지 |
 | `server/app/display_agent.py` | 캐릭터가 언제 무엇을 물을지, 영어 제안 문구(`PROMPTS`) |
 | `app/src/tracking/figures.ts` | 가상 댄서(데모와 동작 설명 페이지의 움직임) |
-| `app/src/tracking/config.ts` | 인식 기준값(`labels`: 동작 단어, `labels.step`: 스텝, `answer`: O, `targets`) |
+| `app/src/tracking/config.ts` | 인식 기준값(`labels`: 동작 단어, `labels.step`: 스텝, `answer`: O, `targets`). 동작 단어 기준값을 바꾸는 법과 변경 기록: [TRACKING.md](TRACKING.md#디스플레이의-동작-단어-정하는-법과-기준값-바꾸기) |
 
 `app/src/tracking/`의 코드를 바꾸면 `app/`에서 `npm run build:display`로 `server/app/static/tracking.js`를 다시 만들어야 화면에 반영된다. `display.html`·`moves.html`만 바꿀 때는 필요 없다.

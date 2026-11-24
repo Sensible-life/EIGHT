@@ -70,6 +70,10 @@ export type TrackingConfig = {
     step: { plant_speed: number; lift: number; move: number; max_lift: number; min_steps: number };
     torso: { shift: number; jump: number; feet_up: number; drop: number }; // hips over still feet; hip rise; ankle rise; leg length vs standing
     calibrate_s: number; // standing still this long sets the home spot
+    calibrate_move: number; // torso lengths the hips, hands and feet may wander (jitter included) and still count as standing still
+    // jitter: while standing still, each part's speed (median) times multiplier, capped at max (torso lengths / s), is taken off later speeds
+    noise: { multiplier: number; max: number };
+    speed_span: number; // seconds a speed is measured over (centered), so jitter weighs less than movement
     space: { zone: number; near: number; far: number; weight: number }; // sideways offset; torso size vs home; hips off the feet
     zone_history_s: number; // how long the left / center / right history is kept
   };
@@ -134,7 +138,7 @@ export const DEFAULT_CONFIG: TrackingConfig = {
     limb: { circle_rad: 1.5 * Math.PI, reach: 0.3, swing_rad: 0.5 },
     step: { plant_speed: 0.6, lift: 0.1, move: 0.15, max_lift: 0.5, min_steps: 2 },
     torso: { shift: 0.2, jump: 0.2, feet_up: 0.1, drop: 0.75 },
-    calibrate_s: 1.5,
+    calibrate_s: 1.5, calibrate_move: 0.18, noise: { multiplier: 2.0, max: 1.0 }, speed_span: 0.1,
     space: { zone: 0.8, near: 1.2, far: 0.83, weight: 0.25 },
     zone_history_s: 30,
   },

@@ -62,7 +62,41 @@ const winding = (path: P2[]) => {
 };
 
 type Sample = { t: number; music: number | null; beat: number | null; T: number; hip: P2; feet: P2 | null; rel: Map<number, P2> };
-type Home = { hip: P2; T: number; feet: P2; leg: number };
+/** How fast each part seems to move while the dancer stands still (landmark jitter), torso lengths / s; foot = in the room. */
+type Noise = Record<PartName | 'head' | 'foot', number>;
+type Home = { hip: P2; T: number; feet: P2; leg: number; noise: Noise };
+const median = (a: number[]) => { if (!a.length) return 0; const b = [...a].sort((x, y) => x - y), k = b.length >> 1; return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; };
+/**
+ * Speed of one point at each step between samples (null where it is not seen). Measured over `span` seconds centered
+ * on the step, not frame to frame: landmark jitter moves a point about as far in one frame as a slow arm does, but
+ * over a fifth of a second a real movement goes much further than jitter. Centered, so beat timing does not lag.
+ */
+const speedsOf = (s: Sample[], get: (q: Sample) => P2 | null | undefined, span: number) => {
+  const pts = s.map(get), out: (number | null)[] = [];
+  let a = 0, b = 0;
+  for (let i = 0; i + 1 < s.length; i++) {
+    const mid = (s[i].t + s[i + 1].t) / 2;
+    while (s[a].t < mid - span / 2 && a < i) a++;
+    while (b + 1 < s.length && s[b + 1].t <= mid + span / 2) b++;
+    const lo = Math.min(a, i), hi = Math.max(b, i + 1), p0 = pts[lo], p1 = pts[hi];
+    out.push(p0 && p1 && pts[i] && pts[i + 1] ? len(sub(p1, p0)) / (s[hi].t - s[lo].t) : null);
+  }
+  return out;
+};
+/** A limb's speed: its end and middle joints together, against the hip. */
+const limbSpeeds = (s: Sample[], L: (typeof LIMBS)[number], span: number) => {
+  const e = speedsOf(s, q => q.rel.get(L.end), span), m = speedsOf(s, q => q.rel.get(L.mid), span);
+  return e.map((x, i) => (x !== null && m[i] !== null ? (x + m[i]!) / 2 : null));
+};
+/** A path smoothed over `n` samples, to tell drifting from jittering. */
+const settle = (pts: P2[], n: number) => pts.map((_, i) => {
+  const w = pts.slice(Math.max(0, i - n + 1), i + 1);
+  return [mean(w.map(p => p[0])), mean(w.map(p => p[1]))] as P2;
+});
+/** A point where it is in the room, in torso lengths of `scale`. */
+const inRoom = (j: number, scale: number) => (q: Sample): P2 | null => { const r = q.rel.get(j); return r ? [(q.hip[0] + r[0] * q.T) / scale, (q.hip[1] + r[1] * q.T) / scale] : null; };
+/** Speeds less the jitter measured while standing still: what is left is movement. */
+const lessNoise = (v: (number | null)[], floor: number) => v.map(x => (x === null ? null : Math.max(0, x - floor)));
 type Described = { speed: Speed; size: Size; texture: Texture; timing: Timing; mean: number };
 
 export class MovementLabeler {
@@ -121,15 +155,27 @@ export class MovementLabeler {
     return total > 0 ? { left: time.left / total, center: time.center / total, right: time.right / total } : null;
   }
 
-  /** Home = the dancer standing still for calibrate_s: hip spot, torso size, leg length, feet spot. */
+  /**
+   * Home = the dancer standing still for calibrate_s: hip spot, torso size, leg length, feet spot, and how much each
+   * part seems to move while still (the camera's jitter on this dancer), which later readings take off their speeds.
+   */
   private calibrate(): void {
-    const s = this.samples, last = s[s.length - 1], w = s.filter(q => last.t - q.t <= this.cfg.calibrate_s);
-    if (last.t - s[0].t < this.cfg.calibrate_s || w.some(q => !q.feet)) return;
+    const c = this.cfg, s = this.samples, last = s[s.length - 1], w = s.filter(q => last.t - q.t <= c.calibrate_s);
+    if (last.t - s[0].t < c.calibrate_s || w.some(q => !q.feet)) return;
     const T = mean(w.map(q => q.T));
-    const moved = Math.max(box(w.map(q => q.hip)).d / T, ...[15, 16, 27, 28].map(j => box(w.map(q => q.rel.get(j)).filter((p): p is P2 => !!p)).d));
-    if (moved > this.cfg.speed.still * this.cfg.calibrate_s) return;
+    // how far the hips, hands and feet wandered, on paths smoothed over 0.2 s so jitter does not count as wandering
+    const n = Math.max(1, Math.round(0.2 * (w.length - 1) / Math.max(1e-6, w[w.length - 1].t - w[0].t)));
+    const moved = Math.max(box(settle(w.map(q => q.hip), n)).d / T, ...[15, 16, 27, 28].map(j => box(settle(w.map(q => q.rel.get(j)).filter((p): p is P2 => !!p), n)).d));
+    if (moved > c.calibrate_move) return;
     const hip: P2 = [mean(w.map(q => q.hip[0])), mean(w.map(q => q.hip[1]))], feet: P2 = [mean(w.map(q => q.feet![0])), mean(w.map(q => q.feet![1]))];
-    this.home = { hip, T, feet, leg: (feet[1] - hip[1]) / T };
+    const floor = (v: (number | null)[]) => Math.min(c.noise.max, c.noise.multiplier * median(known(v)));
+    const noise = {
+      torso: floor(speedsOf(w, q => [q.hip[0] / T, q.hip[1] / T], c.speed_span)),
+      head: floor(speedsOf(w, q => q.rel.get(0), c.speed_span)),
+      foot: floor([...speedsOf(w, inRoom(27, T), c.speed_span), ...speedsOf(w, inRoom(28, T), c.speed_span)]),
+    } as Noise;
+    for (const L of LIMBS) noise[L.name] = floor(limbSpeeds(w, L, c.speed_span));
+    this.home = { hip, T, feet, leg: (feet[1] - hip[1]) / T, noise };
     this.used = { left: 0, right: 0 };
     this.zones = [];
   }
@@ -159,13 +205,15 @@ export class MovementLabeler {
    * it rose above the floor, so a kick or a knee lift can be told apart from a step.
    */
   private steps(foot: number, other: number, scale: number): { count: number; lift: number; speeds: (number | null)[]; extent: number } {
-    const c = this.cfg.step, s = this.samples;
-    const at = (q: Sample, j: number): P2 | null => { const r = q.rel.get(j); return r ? [(q.hip[0] + r[0] * q.T) / scale, (q.hip[1] + r[1] * q.T) / scale] : null; };
-    const F = s.map(q => at(q, foot)), O = s.map(q => at(q, other));
+    const c = this.cfg.step, s = this.samples, jitter = this.home?.noise.foot ?? 0;
+    const F = s.map(inRoom(foot, scale)), O = s.map(inRoom(other, scale));
     const ys = [...F, ...O].filter((p): p is P2 => p !== null).map(p => p[1]);
-    const floor = ys.length ? Math.max(...ys) : 0; // image y grows down: the floor is the lowest a foot got
-    const speed = (P: (P2 | null)[], i: number) => { const a = P[i - 1], b = P[i]; return i > 0 && a && b ? len(sub(b, a)) / (s[i].t - s[i - 1].t) : null; };
-    const planted = (P: (P2 | null)[], i: number) => { const v = speed(P, i), p = P[i]; return !!p && v !== null && v < c.plant_speed && floor - p[1] <= c.lift / 2; };
+    // image y grows down: the floor is about the lowest the feet got (a high percentile, so one jittery frame does not set it)
+    const floor = ys.length ? [...ys].sort((a, b) => a - b)[Math.floor(0.9 * (ys.length - 1))] : 0;
+    const vF = speedsOf(s, inRoom(foot, scale), this.cfg.speed_span), vO = speedsOf(s, inRoom(other, scale), this.cfg.speed_span);
+    const speed = (P: (P2 | null)[], i: number) => (i > 0 ? (P === F ? vF : vO)[i - 1] : null); // the step into sample i
+    // a foot stands while it moves no faster than standing still jitters it, plus plant_speed
+    const planted = (P: (P2 | null)[], i: number) => { const v = speed(P, i), p = P[i]; return !!p && v !== null && v < c.plant_speed + jitter && floor - p[1] <= c.lift / 2; };
     let count = 0, lift = 0, spot: P2 | null = null, away: { top: number; otherDown: number; n: number } | null = null;
     for (let i = 1; i < s.length; i++) {
       const p = F[i];
@@ -181,7 +229,7 @@ export class MovementLabeler {
         if (planted(O, i)) away.otherDown++;
       }
     }
-    return { count, lift, speeds: s.slice(1).map((_, i) => speed(F, i + 1)), extent: box(F.filter((x): x is P2 => x !== null)).d };
+    return { count, lift, speeds: lessNoise(vF, jitter), extent: box(F.filter((x): x is P2 => x !== null)).d };
   }
 
   /** Everything about the current window; null until it holds about a second of frames. */
@@ -189,15 +237,14 @@ export class MovementLabeler {
     const s = this.samples, c = this.cfg;
     if (s.length < 8 || s[s.length - 1].t - s[0].t < 1) return null;
     const scale = this.home?.T ?? mean(s.map(q => q.T)); // one ruler for travel: per-frame torso size would hide walking closer
-    const steps = (get: (q: Sample) => P2 | null | undefined) => s.slice(1).map((q, i) => { const p0 = get(s[i]), p1 = get(q); return p0 && p1 ? len(sub(p1, p0)) / (q.t - s[i].t) : null; });
+    const noise = this.home?.noise; // before the home stand nothing is known about the jitter: speeds are taken as they are
     const seenEnough = (v: (number | null)[]) => v.length > 0 && known(v).length / v.length >= c.min_seen;
     const out = (d: Described): PartLabel => ({ kind: null, speed: d.speed, size: d.size, texture: d.texture, toward: null, timing: d.timing });
     const parts = {} as Record<PartName, PartLabel>, means: Partial<Record<'head' | PartName, number>> = {}, series: (number | null)[][] = [];
     const knownLimbs: (typeof LIMBS)[number][] = [];
 
     for (const L of LIMBS) {
-      const vEnd = steps(q => q.rel.get(L.end)), vMid = steps(q => q.rel.get(L.mid));
-      const v = vEnd.map((x, i) => (x !== null && vMid[i] !== null ? (x + vMid[i]!) / 2 : null));
+      const v = lessNoise(limbSpeeds(s, L, c.speed_span), noise?.[L.name] ?? 0);
       if (!seenEnough(v)) { parts[L.name] = { ...UNKNOWN }; continue; } // hidden or out of frame: unknown, not still
       knownLimbs.push(L);
       series.push(v);
@@ -229,7 +276,7 @@ export class MovementLabeler {
 
     // Torso: the hips in the room (not relative to anything), against the feet and the home spot.
     const hips: P2[] = s.map(q => [q.hip[0] / scale, q.hip[1] / scale]), feet: P2[] = s.filter(q => q.feet).map(q => [q.feet![0] / scale, q.feet![1] / scale]);
-    const hipBox = box(hips), feetBox = box(feet), vHip = steps(q => [q.hip[0] / scale, q.hip[1] / scale]), td = this.describe(vHip, hipBox.d), torso = out(td);
+    const hipBox = box(hips), feetBox = box(feet), vHip = lessNoise(speedsOf(s, q => [q.hip[0] / scale, q.hip[1] / scale], c.speed_span), noise?.torso ?? 0), td = this.describe(vHip, hipBox.d), torso = out(td);
     means.torso = td.mean;
     const h = this.home, now = s[s.length - 1];
     const legNow = (q: Sample) => (q.feet ? (q.feet[1] - q.hip[1]) / q.T : null);
@@ -255,7 +302,7 @@ export class MovementLabeler {
     }
 
     // Whole body: one line over the parts that were seen (the head only counts here).
-    const vHead = steps(q => q.rel.get(0));
+    const vHead = lessNoise(speedsOf(s, q => q.rel.get(0), c.speed_span), noise?.head ?? 0);
     series.push(vHip);
     if (seenEnough(vHead)) { series.push(vHead); means.head = mean(known(vHead)); }
     const names = Object.keys(means) as ('head' | PartName)[], all = mean(names.map(n => means[n]!));

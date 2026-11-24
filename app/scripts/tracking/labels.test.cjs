@@ -2,6 +2,7 @@
 // Moved from server/tests/movement.test.mjs when the webcam labels joined the tracking code.
 const assert = require('./assert.cjs');
 const { MovementLabeler } = require('../load-ts.cjs')('src/tracking/labels.ts');
+const { rng } = require('./helpers.cjs');
 
 /** A standing figure (33 landmarks, upright 3:4 frame; torso 0.2 high), then `pose(t, P)` moves it. Image x grows to the dancer's left. */
 function figure(t, pose) {
@@ -16,11 +17,11 @@ const shift = (P, dx, dy, only = () => true) => P.forEach((p, i) => { if (only(i
 const UPPER = i => i < 25; // everything but knees and feet
 const BEAT = 0.5, STILL = 3; // every run starts with 3 s standing still: the calibration
 /** The labeler after `seconds` of the figure moving after the still start (pose gets the time since the movement began). */
-function runLabeler(pose, { seconds = 8, music = true, hide = () => [] } = {}) {
-  const c = new MovementLabeler();
+function runLabeler(pose, { seconds = 8, music = true, hide = () => [], jitter = 0, seed = 7 } = {}) {
+  const c = new MovementLabeler(), r = rng(seed); // jitter: landmark noise like a webcam's (standard deviation, frame heights)
   for (let i = 0; i < (STILL + seconds) * 30; i++) {
-    const t = i / 30, hidden = hide(i);
-    c.add({ tMs: 1000 * t, image: figure(t - STILL, t >= STILL ? pose : null), visibility: Array.from({ length: 33 }, (_, j) => (hidden.includes(j) ? 0 : 1)), aspect: 0.75, musicT: music ? t : null, beatS: music ? BEAT : null });
+    const t = i / 30, hidden = hide(i), image = figure(t - STILL, t >= STILL ? pose : null).map(p => [p[0] + r.normal(jitter), p[1] + r.normal(jitter)]);
+    c.add({ tMs: 1000 * t, image, visibility: Array.from({ length: 33 }, (_, j) => (hidden.includes(j) ? 0 : 1)), aspect: 0.75, musicT: music ? t : null, beatS: music ? BEAT : null });
   }
   assert.ok(c.calibrated, 'the still start calibrates');
   return c;
@@ -115,6 +116,22 @@ const lifted = (t, phase) => Math.max(0, Math.sin(Math.PI * t / BEAT + phase));
   // a kick rises too high for a step
   const kick = run((t, P) => { const out = Math.abs(Math.sin(Math.PI * t / BEAT / 2)); P[28] = [0.47 - 0.2 * out, 0.8 - 0.12 * out]; P[26] = [0.47 - 0.1 * out, 0.65 - 0.03 * out]; }).parts;
   assert.notEqual(kick.leg_r.kind, 'step', JSON.stringify(kick.leg_r));
+}
+
+// Camera jitter: the still start measures how much each part seems to move while still, and speeds are taken over
+// a tenth of a second, so a part that does not move reads as hold, not shake, while the others really move.
+{
+  const circleLeft = (t, P) => { const a = Math.PI * t; P[15] = [0.56 + 0.2 * Math.cos(a), 0.3 + 0.2 * Math.sin(a)]; P[13] = [0.56 + 0.1 * Math.cos(a), 0.3 + 0.1 * Math.sin(a)]; };
+  for (const jitter of [0.002, 0.004]) for (const seed of [1, 2, 3]) {
+    const p = run(circleLeft, { jitter, seed }).parts;
+    assert.equal(p.arm_l.kind, 'circle', `jitter ${jitter}: the moving arm`);
+    for (const still of ['arm_r', 'leg_l', 'leg_r', 'torso']) assert.equal(p[still].kind, 'hold', `jitter ${jitter} seed ${seed}: still ${still} read as ${p[still].kind}`);
+  }
+  // real movement still reads through the jitter: a hand shaken fast and wide, a march
+  const shake = (t, P) => { const a = 2 * Math.PI * 6 * t; P[16] = [0.41 + 0.03 * Math.sin(a), 0.5 + 0.02 * Math.cos(a)]; };
+  assert.equal(run(shake, { jitter: 0.004 }).parts.arm_r.kind, 'shake');
+  const march = (t, P) => { for (const [ankle, knee, phase] of [[27, 25, 0], [28, 26, Math.PI]]) { const up = lifted(t, phase); P[ankle][1] -= 0.04 * up; P[knee][1] -= 0.02 * up; } };
+  assert.equal(run(march, { jitter: 0.004 }).parts.leg_l.kind, 'step');
 }
 
 // The torso: hips against the feet, and the whole body against the home spot.

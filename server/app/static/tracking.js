@@ -103,6 +103,9 @@ var DEFAULT_CONFIG = {
     step: { plant_speed: 0.6, lift: 0.1, move: 0.15, max_lift: 0.5, min_steps: 2 },
     torso: { shift: 0.2, jump: 0.2, feet_up: 0.1, drop: 0.75 },
     calibrate_s: 1.5,
+    calibrate_move: 0.18,
+    noise: { multiplier: 2, max: 1 },
+    speed_span: 0.1,
     space: { zone: 0.8, near: 1.2, far: 0.83, weight: 0.25 },
     zone_history_s: 30
   },
@@ -197,6 +200,36 @@ var winding = (path) => {
   }
   return { turn, lo, hi };
 };
+var median = (a) => {
+  if (!a.length) return 0;
+  const b = [...a].sort((x, y) => x - y), k = b.length >> 1;
+  return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2;
+};
+var speedsOf = (s, get, span) => {
+  const pts = s.map(get), out = [];
+  let a = 0, b = 0;
+  for (let i = 0; i + 1 < s.length; i++) {
+    const mid2 = (s[i].t + s[i + 1].t) / 2;
+    while (s[a].t < mid2 - span / 2 && a < i) a++;
+    while (b + 1 < s.length && s[b + 1].t <= mid2 + span / 2) b++;
+    const lo = Math.min(a, i), hi = Math.max(b, i + 1), p0 = pts[lo], p1 = pts[hi];
+    out.push(p0 && p1 && pts[i] && pts[i + 1] ? len(sub(p1, p0)) / (s[hi].t - s[lo].t) : null);
+  }
+  return out;
+};
+var limbSpeeds = (s, L, span) => {
+  const e = speedsOf(s, (q) => q.rel.get(L.end), span), m = speedsOf(s, (q) => q.rel.get(L.mid), span);
+  return e.map((x, i) => x !== null && m[i] !== null ? (x + m[i]) / 2 : null);
+};
+var settle = (pts, n) => pts.map((_, i) => {
+  const w = pts.slice(Math.max(0, i - n + 1), i + 1);
+  return [mean(w.map((p) => p[0])), mean(w.map((p) => p[1]))];
+});
+var inRoom = (j, scale) => (q) => {
+  const r = q.rel.get(j);
+  return r ? [(q.hip[0] + r[0] * q.T) / scale, (q.hip[1] + r[1] * q.T) / scale] : null;
+};
+var lessNoise = (v, floor) => v.map((x) => x === null ? null : Math.max(0, x - floor));
 var MovementLabeler = class {
   constructor(cfg = DEFAULT_CONFIG.labels) {
     this.cfg = cfg;
@@ -252,15 +285,26 @@ var MovementLabeler = class {
     const total = time.left + time.center + time.right;
     return total > 0 ? { left: time.left / total, center: time.center / total, right: time.right / total } : null;
   }
-  /** Home = the dancer standing still for calibrate_s: hip spot, torso size, leg length, feet spot. */
+  /**
+   * Home = the dancer standing still for calibrate_s: hip spot, torso size, leg length, feet spot, and how much each
+   * part seems to move while still (the camera's jitter on this dancer), which later readings take off their speeds.
+   */
   calibrate() {
-    const s = this.samples, last = s[s.length - 1], w = s.filter((q) => last.t - q.t <= this.cfg.calibrate_s);
-    if (last.t - s[0].t < this.cfg.calibrate_s || w.some((q) => !q.feet)) return;
+    const c = this.cfg, s = this.samples, last = s[s.length - 1], w = s.filter((q) => last.t - q.t <= c.calibrate_s);
+    if (last.t - s[0].t < c.calibrate_s || w.some((q) => !q.feet)) return;
     const T = mean(w.map((q) => q.T));
-    const moved = Math.max(box(w.map((q) => q.hip)).d / T, ...[15, 16, 27, 28].map((j) => box(w.map((q) => q.rel.get(j)).filter((p) => !!p)).d));
-    if (moved > this.cfg.speed.still * this.cfg.calibrate_s) return;
+    const n = Math.max(1, Math.round(0.2 * (w.length - 1) / Math.max(1e-6, w[w.length - 1].t - w[0].t)));
+    const moved = Math.max(box(settle(w.map((q) => q.hip), n)).d / T, ...[15, 16, 27, 28].map((j) => box(settle(w.map((q) => q.rel.get(j)).filter((p) => !!p), n)).d));
+    if (moved > c.calibrate_move) return;
     const hip = [mean(w.map((q) => q.hip[0])), mean(w.map((q) => q.hip[1]))], feet = [mean(w.map((q) => q.feet[0])), mean(w.map((q) => q.feet[1]))];
-    this.home = { hip, T, feet, leg: (feet[1] - hip[1]) / T };
+    const floor = (v) => Math.min(c.noise.max, c.noise.multiplier * median(known(v)));
+    const noise = {
+      torso: floor(speedsOf(w, (q) => [q.hip[0] / T, q.hip[1] / T], c.speed_span)),
+      head: floor(speedsOf(w, (q) => q.rel.get(0), c.speed_span)),
+      foot: floor([...speedsOf(w, inRoom(27, T), c.speed_span), ...speedsOf(w, inRoom(28, T), c.speed_span)])
+    };
+    for (const L of LIMBS) noise[L.name] = floor(limbSpeeds(w, L, c.speed_span));
+    this.home = { hip, T, feet, leg: (feet[1] - hip[1]) / T, noise };
     this.used = { left: 0, right: 0 };
     this.zones = [];
   }
@@ -288,21 +332,15 @@ var MovementLabeler = class {
    * it rose above the floor, so a kick or a knee lift can be told apart from a step.
    */
   steps(foot, other, scale) {
-    const c = this.cfg.step, s = this.samples;
-    const at = (q, j) => {
-      const r = q.rel.get(j);
-      return r ? [(q.hip[0] + r[0] * q.T) / scale, (q.hip[1] + r[1] * q.T) / scale] : null;
-    };
-    const F = s.map((q) => at(q, foot)), O = s.map((q) => at(q, other));
+    const c = this.cfg.step, s = this.samples, jitter = this.home?.noise.foot ?? 0;
+    const F = s.map(inRoom(foot, scale)), O = s.map(inRoom(other, scale));
     const ys = [...F, ...O].filter((p) => p !== null).map((p) => p[1]);
-    const floor = ys.length ? Math.max(...ys) : 0;
-    const speed = (P, i) => {
-      const a = P[i - 1], b = P[i];
-      return i > 0 && a && b ? len(sub(b, a)) / (s[i].t - s[i - 1].t) : null;
-    };
+    const floor = ys.length ? [...ys].sort((a, b) => a - b)[Math.floor(0.9 * (ys.length - 1))] : 0;
+    const vF = speedsOf(s, inRoom(foot, scale), this.cfg.speed_span), vO = speedsOf(s, inRoom(other, scale), this.cfg.speed_span);
+    const speed = (P, i) => i > 0 ? (P === F ? vF : vO)[i - 1] : null;
     const planted = (P, i) => {
       const v = speed(P, i), p = P[i];
-      return !!p && v !== null && v < c.plant_speed && floor - p[1] <= c.lift / 2;
+      return !!p && v !== null && v < c.plant_speed + jitter && floor - p[1] <= c.lift / 2;
     };
     let count = 0, lift = 0, spot = null, away = null;
     for (let i = 1; i < s.length; i++) {
@@ -319,24 +357,20 @@ var MovementLabeler = class {
         if (planted(O, i)) away.otherDown++;
       }
     }
-    return { count, lift, speeds: s.slice(1).map((_, i) => speed(F, i + 1)), extent: box(F.filter((x) => x !== null)).d };
+    return { count, lift, speeds: lessNoise(vF, jitter), extent: box(F.filter((x) => x !== null)).d };
   }
   /** Everything about the current window; null until it holds about a second of frames. */
   label() {
     const s = this.samples, c = this.cfg;
     if (s.length < 8 || s[s.length - 1].t - s[0].t < 1) return null;
     const scale = this.home?.T ?? mean(s.map((q) => q.T));
-    const steps = (get) => s.slice(1).map((q, i) => {
-      const p0 = get(s[i]), p1 = get(q);
-      return p0 && p1 ? len(sub(p1, p0)) / (q.t - s[i].t) : null;
-    });
+    const noise = this.home?.noise;
     const seenEnough = (v) => v.length > 0 && known(v).length / v.length >= c.min_seen;
     const out = (d) => ({ kind: null, speed: d.speed, size: d.size, texture: d.texture, toward: null, timing: d.timing });
     const parts = {}, means = {}, series = [];
     const knownLimbs = [];
     for (const L of LIMBS) {
-      const vEnd = steps((q) => q.rel.get(L.end)), vMid = steps((q) => q.rel.get(L.mid));
-      const v = vEnd.map((x, i) => x !== null && vMid[i] !== null ? (x + vMid[i]) / 2 : null);
+      const v = lessNoise(limbSpeeds(s, L, c.speed_span), noise?.[L.name] ?? 0);
       if (!seenEnough(v)) {
         parts[L.name] = { ...UNKNOWN };
         continue;
@@ -379,7 +413,7 @@ var MovementLabeler = class {
       parts[L.name] = p;
     }
     const hips = s.map((q) => [q.hip[0] / scale, q.hip[1] / scale]), feet = s.filter((q) => q.feet).map((q) => [q.feet[0] / scale, q.feet[1] / scale]);
-    const hipBox = box(hips), feetBox = box(feet), vHip = steps((q) => [q.hip[0] / scale, q.hip[1] / scale]), td = this.describe(vHip, hipBox.d), torso = out(td);
+    const hipBox = box(hips), feetBox = box(feet), vHip = lessNoise(speedsOf(s, (q) => [q.hip[0] / scale, q.hip[1] / scale], c.speed_span), noise?.torso ?? 0), td = this.describe(vHip, hipBox.d), torso = out(td);
     means.torso = td.mean;
     const h = this.home, now = s[s.length - 1];
     const legNow = (q) => q.feet ? (q.feet[1] - q.hip[1]) / q.T : null;
@@ -403,7 +437,7 @@ var MovementLabeler = class {
         width: r2(this.used.left + this.used.right)
       };
     }
-    const vHead = steps((q) => q.rel.get(0));
+    const vHead = lessNoise(speedsOf(s, (q) => q.rel.get(0), c.speed_span), noise?.head ?? 0);
     series.push(vHip);
     if (seenEnough(vHead)) {
       series.push(vHead);
@@ -439,7 +473,7 @@ var midpoint = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 
 var dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 var norm = (a) => Math.sqrt(dot(a, a));
 var mean2 = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
-function median(xs) {
+function median2(xs) {
   const s = [...xs].sort((a, b) => a - b), m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
@@ -645,11 +679,11 @@ var MoveDetector = class {
       }
       const legs = this.samples.map((s) => s.leg).filter((v) => v !== null);
       this.base = {
-        torso: median(this.samples.map((s) => s.torso)),
-        shoulders: median(this.samples.map((s) => s.shoulders)),
-        hipX: median(this.samples.map((s) => s.hipX)),
-        hipY: median(this.samples.map((s) => s.hipY)),
-        leg: legs.length ? median(legs) : null
+        torso: median2(this.samples.map((s) => s.torso)),
+        shoulders: median2(this.samples.map((s) => s.shoulders)),
+        hipX: median2(this.samples.map((s) => s.hipX)),
+        hipY: median2(this.samples.map((s) => s.hipY)),
+        leg: legs.length ? median2(legs) : null
       };
     }
     if (!counting) return this.forget();
@@ -1139,10 +1173,10 @@ var Calibrator = class {
   result() {
     const noiseFloor = bySegment((s) => {
       const v = this.raw[s];
-      return Math.min(v.length ? this.o.noiseFloorMultiplier * median(v) : 0, this.o.maxNoiseFloor);
+      return Math.min(v.length ? this.o.noiseFloorMultiplier * median2(v) : 0, this.o.maxNoiseFloor);
     });
-    const levelRef = this.geo.length ? { hipY: median(this.geo.map((g) => g[0])), legRatio: median(this.geo.map((g) => g[1])), torsoImg: median(this.geo.map((g) => g[2])) } : null;
-    return { noiseFloor, torsoLength: this.torso.length ? median(this.torso) : 0, levelRef };
+    const levelRef = this.geo.length ? { hipY: median2(this.geo.map((g) => g[0])), legRatio: median2(this.geo.map((g) => g[1])), torsoImg: median2(this.geo.map((g) => g[2])) } : null;
+    return { noiseFloor, torsoLength: this.torso.length ? median2(this.torso) : 0, levelRef };
   }
 };
 
@@ -1769,7 +1803,7 @@ var march = (t, P) => {
 };
 var shakeRight = (t, P) => {
   const a = 2 * Math.PI * 6 * t;
-  P[16] = [0.41 + 0.015 * Math.sin(a), 0.5 + 0.01 * Math.cos(a)];
+  P[16] = [0.41 + 0.03 * Math.sin(a), 0.5 + 0.02 * Math.cos(a)];
 };
 var kneeLeft = (t, P) => {
   const up = punch(beat(t));
